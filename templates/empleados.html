@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Empleados - Viáticos CENOSA</title>
+    <title>Empleados y Configuración - Viáticos CENOSA</title>
     <link rel="stylesheet" href="/static/estilos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -22,7 +22,7 @@
                 <a href="/panel/facturas"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
                 
                 <p class="menu-label" style="margin-top: 15px;">Administración</p>
-                <a href="/panel/empleados" class="active"><i class="fas fa-users"></i> Empleados</a>
+                <a href="/panel/empleados" class="active"><i class="fas fa-users"></i> Empleados y Config</a>
                 <a href="/panel/presupuestos"><i class="fas fa-money-check-alt"></i> Presupuestos 2026</a>
                 <a href="#"><i class="fas fa-chart-pie"></i> Reportes</a>
             </nav>
@@ -56,11 +56,17 @@
                     <i class="fas fa-check-circle"></i> Empleado agregado correctamente.
                 </div>
                 {% endif %}
+                {% if msg == 'cfg' %}
+                <div style="background: #e0f2fe; color: #0284c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;">
+                    <i class="fas fa-cog"></i> Configuración actualizada correctamente.
+                </div>
+                {% endif %}
 
-                <div class="card" style="background: white; border-radius: 16px; padding: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-bottom: 25px;">
-                    <h3 style="margin-top: 0; color: var(--text-main); margin-bottom: 20px;">Configuración de la Empresa</h3>
-                    <form method="POST" action="/panel/config">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                    <!-- CONFIGURACIÓN DE LA EMPRESA -->
+                    <div class="card" style="background: white; border-radius: 16px; padding: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.04);">
+                        <h3 style="margin-top: 0; color: var(--text-main); margin-bottom: 20px;">Datos de la Empresa</h3>
+                        <form method="POST" action="/panel/config">
                             <div class="form-group">
                                 <label>Nombre de la empresa</label>
                                 <input type="text" name="nombre_empresa" value="{{ cfg.nombre_empresa }}" required>
@@ -77,13 +83,33 @@
                                 <label>Factor de conversión (odómetro)</label>
                                 <input type="number" step="0.01" name="factor_conversion" value="{{ dep.factor_conversion }}" required>
                             </div>
+                            <button type="submit" class="btn-action" style="background: var(--verde-cenosa); color: white; margin-top: 10px; width: 100%;">Guardar Configuración</button>
+                        </form>
+                    </div>
+
+                    <!-- ADMINISTRAR CENTROS DE COSTO -->
+                    <div class="card" style="background: white; border-radius: 16px; padding: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.04);">
+                        <h3 style="margin-top: 0; color: var(--text-main); margin-bottom: 20px;">Centros de Costo</h3>
+                        
+                        <form method="POST" action="/panel/config/centros/agregar" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                            <input type="text" name="centro" placeholder="Ej. Ventas Norte" required style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <button type="submit" class="btn-action" style="background: var(--verde-cenosa); color: white;">Agregar</button>
+                        </form>
+
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            {% for cc in centros_costos %}
+                            <div style="background: #f1f5f9; padding: 8px 12px; border-radius: 20px; display: flex; align-items: center; gap: 8px; font-size: 0.9rem; border: 1px solid #e2e8f0;">
+                                {{ cc }}
+                                <a href="/panel/config/centros/eliminar/{{ cc }}" style="color: #ef4444; text-decoration: none;" title="Eliminar"><i class="fas fa-times-circle"></i></a>
+                            </div>
+                            {% endfor %}
                         </div>
-                        <button type="submit" class="btn-action" style="background: var(--verde-cenosa); color: white; margin-top: 15px;">Guardar Configuración</button>
-                    </form>
+                    </div>
                 </div>
 
+                <!-- AGREGAR EMPLEADO -->
                 <div class="card" style="background: white; border-radius: 16px; padding: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-bottom: 25px;">
-                    <h3 style="margin-top: 0; color: var(--text-main); margin-bottom: 20px;">Agregar Empleado</h3>
+                    <h3 style="margin-top: 0; color: var(--text-main); margin-bottom: 20px;">Agregar Nuevo Empleado</h3>
                     <form method="POST" action="/panel/empleados/agregar">
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
                             <div class="form-group">
@@ -101,7 +127,6 @@
                             </div>
                             <div class="form-group">
                                 <label>Centro de Costo</label>
-                                <!-- MENÚ DESPLEGABLE PARA ADMIN -->
                                 <select name="departamento" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                                     <option value="">Selecciona...</option>
                                     {% for cc in centros_costos %}
@@ -118,6 +143,7 @@
                     </form>
                 </div>
 
+                <!-- LISTA DE EMPLEADOS -->
                 <div class="table-card">
                     <div class="table-header">
                         <h3>Lista de Empleados</h3>
@@ -128,7 +154,7 @@
                                 <tr>
                                     <th>Nombre</th>
                                     <th>Puesto</th>
-                                    <th>Departamento</th>
+                                    <th>Centro de Costo</th>
                                     <th>Límite / Fondo</th>
                                 </tr>
                             </thead>
