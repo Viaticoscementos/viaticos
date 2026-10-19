@@ -1,128 +1,239 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Depreciacion de vehiculo - CENOSA</title>
-<link rel="stylesheet" href="/static/estilos.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Depreciación de Vehículo - CENOSA</title>
+    <link rel="stylesheet" href="/static/estilos.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-<div class="topbar">
-  <img src="/static/logo_header.png" alt="CENOSA" onerror="this.style.display='none'">
-  <h1>Depreciacion de vehiculo</h1>
-  <span class="sp"></span>
-  <a href="/{{ ('?token=' ~ token) if token }}">Facturas</a>
-  <a href="/login">Acceso encargada</a>
-</div>
+<body class="dashboard-body" style="background: var(--bg-body);">
 
-<div class="wrap">
-  <div class="card">
-    <h2>Calcula tu depreciacion por kilometraje</h2>
-    <p class="small">Agrega un tramo por cada dia o cada vehiculo que usaste. Puedes mezclar <b>kilometros</b> y <b>millas</b>, y usar vehiculos distintos (si un dia se daño uno y usaste otro). El sistema convierte todo a km y <b>suma</b> para darte el pago total. Factor actual: <b>L {{ factor }}</b> por km.</p>
+    <!-- Barra superior con botón de volver -->
+    <header class="login-header" style="display: flex; align-items: center; gap: 15px; padding: 15px 30px;">
+        <img src="/static/logo_color.png" alt="Logo" style="height: 40px; background: white; padding: 5px; border-radius: 8px;">
+        <h1 style="margin: 0; font-size: 1.2rem;">Depreciación de Vehículo</h1>
+        <div style="margin-left: auto;">
+            <a href="/panel" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white;">
+                <i class="fas fa-arrow-left"></i> Volver al menú
+            </a>
+        </div>
+    </header>
 
-    <div class="grid">
-      <div>
-        <label>Tu nombre</label>
-        <input id="empleado" list="emplist" required placeholder="Nombre y apellido">
-        <datalist id="emplist">{% for e in empleados %}<option value="{{ e }}">{% endfor %}</datalist>
-      </div>
-      <div>
-        <label>Departamento / centro de costo</label>
-        <input id="departamento" placeholder="Ej. Ventas V60140">
-      </div>
-      <div>
-        <label>Zona</label>
-        <select id="zona">{% for k,v in zonas.items() %}<option value="{{ k }}">{{ v.etiqueta }}</option>{% endfor %}</select>
-      </div>
-      <div>
-        <label>Deducciones (L, opcional)</label>
-        <input id="deducciones" type="number" step="0.01" value="0">
-      </div>
+    <div class="content-wrapper" style="max-width: 1000px; padding-top: 40px;">
+        <div class="card" style="background: white; border-radius: 16px; padding: 30px; box-shadow: var(--shadow-md);">
+            
+            <div class="dashboard-header" style="margin-bottom: 20px;">
+                <h2>Calcula tu depreciación por kilometraje</h2>
+                <p>Agrega un tramo por cada día o cada vehículo que uses. El sistema convierte todo a km y suma para darte el pago total. <strong>Factor actual: L {{ factor }} por km.</strong></p>
+            </div>
+
+            <form id="form-depreciacion">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>Tu nombre</label>
+                        <select id="emp-nombre" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <option value="">Selecciona...</option>
+                            {% for e in empleados %}
+                            <option value="{{ e }}">{{ e }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Centro de Costo</label>
+                        <select id="emp-depto" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            <option value="">Selecciona...</option>
+                            {% for cc in centros_costos %}
+                            <option value="{{ cc }}">{{ cc }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Zona</label>
+                        <select id="emp-zona" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                            {% for z in zonas %}
+                            <option value="{{ z }}">{{ z }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Deducciones (L)</label>
+                        <input type="number" id="emp-deducciones" value="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 30px; margin-bottom: 15px; color: var(--text-main); border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Tramos Recorridos</h3>
+                
+                <div class="table-responsive">
+                    <table id="tabla-tramos">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Vehículo / Placa</th>
+                                <th>Unidad</th>
+                                <th>Lectura Inicial</th>
+                                <th>Lectura Final</th>
+                                <th>Distancia</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Las filas se agregarán aquí con JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 15px; display: flex; gap: 15px;">
+                    <button type="button" class="btn-action" onclick="agregarTramo()" style="background: #e2e8f0; color: var(--text-main);">
+                        <i class="fas fa-plus"></i> Agregar tramo
+                    </button>
+                </div>
+
+                <div style="margin-top: 30px; text-align: right; background: #f8fafc; padding: 20px; border-radius: 12px;">
+                    <h3 style="margin: 0; color: var(--verde-cenosa);">Total Estimado a Pagar: <span id="total-pagar" style="font-size: 1.5rem;">L 0.00</span></h3>
+                </div>
+
+                <button type="submit" class="btn-entrar" style="margin-top: 25px; width: 100%; border-radius: 8px; padding: 15px; font-size: 1.1rem;">
+                    <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Enviar y Registrar Solicitud
+                </button>
+            </form>
+            
+            <div id="resultado-dep" style="margin-top: 25px; display: none;"></div>
+        </div>
     </div>
-  </div>
 
-  <div class="card">
-    <div class="flex" style="justify-content:space-between">
-      <h2 style="margin:0">Tramos recorridos</h2>
-      <button class="btn sec sm" id="add">+ Agregar tramo</button>
-    </div>
-    <div style="overflow-x:auto">
-      <table id="tabla">
-        <tr><th>Fecha</th><th>Vehiculo / placa</th><th>Unidad</th><th>Lectura inicial</th><th>Lectura final</th><th>Foto odometro</th><th>km</th><th></th></tr>
-      </table>
-    </div>
-    <p class="small">La <b>foto del odometro</b> es opcional: si la subes, el sistema intenta leer el numero y lo coloca por ti (revisa que quede bien). 1 milla = {{ '%.4f'|format(milla_km) }} km.</p>
-    <button class="btn" id="calc">Calcular y registrar</button>
-    <span id="estado" class="small"></span>
-    <div id="res" class="resultado"></div>
-  </div>
-</div>
+    <script>
+        const FACTOR = {{ factor }};
+        let idContador = 0;
 
-<script>
-const tabla=document.getElementById('tabla'),res=document.getElementById('res'),est=document.getElementById('estado');
-const TOKEN="{{ token }}";
-function fila(){
-  const tr=document.createElement('tr');
-  tr.innerHTML=`
-    <td><input type="date" class="f"></td>
-    <td><input class="v" placeholder="Carro / placa"></td>
-    <td><select class="u"><option value="km">Kilometros</option><option value="milla">Millas</option></select></td>
-    <td><input class="li" type="number" step="0.1" placeholder="0"></td>
-    <td><input class="lf" type="number" step="0.1" placeholder="0"></td>
-    <td><input class="foto" type="file" accept="image/*" style="font-size:11px"></td>
-    <td class="km">-</td>
-    <td><button class="btn no sm del">x</button></td>`;
-  tabla.appendChild(tr);
-  const li=tr.querySelector('.li'),lf=tr.querySelector('.lf'),u=tr.querySelector('.u'),km=tr.querySelector('.km');
-  function upd(){const d=Math.max((parseFloat(lf.value)||0)-(parseFloat(li.value)||0),0);const f=u.value==='milla'?{{ milla_km }}:1;km.textContent=(d*f).toFixed(1);}
-  [li,lf,u].forEach(e=>e.addEventListener('input',upd));
-  tr.querySelector('.del').onclick=()=>{tr.remove();};
-  tr.querySelector('.foto').onchange=async e=>{
-    const f=e.target.files[0];if(!f)return;
-    est.innerHTML=' <span class="spin"></span> Leyendo odometro...';
-    const fd=new FormData();fd.append('archivo',f);
-    try{const r=await fetch('/api/leer-odometro',{method:'POST',body:fd});const d=await r.json();
-      if(d.valor){if(!li.value)li.value=d.valor;else lf.value=d.valor;upd();}
-      else alert('No se pudo leer el numero. Escribelo a mano.');}
-    catch(_){alert('No se pudo leer la foto.');}
-    est.innerHTML='';
-  };
-}
-document.getElementById('add').onclick=e=>{e.preventDefault();fila();};
-fila();
+        function agregarTramo() {
+            idContador++;
+            const tbody = document.querySelector('#tabla-tramos tbody');
+            const tr = document.createElement('tr');
+            tr.id = `tramo-${idContador}`;
+            tr.innerHTML = `
+                <td><input type="date" class="in-fecha" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"></td>
+                <td><input type="text" class="in-vehiculo" placeholder="Placa" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"></td>
+                <td>
+                    <select class="in-unidad" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        <option value="km">Kilómetros</option>
+                        <option value="mi">Millas</option>
+                    </select>
+                </td>
+                <td><input type="number" class="in-inicial" value="0" required oninput="calcularFila(this)" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"></td>
+                <td><input type="number" class="in-final" value="0" required oninput="calcularFila(this)" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"></td>
+                <td class="txt-distancia" style="font-weight: bold; color: var(--verde-cenosa);">0 km</td>
+                <td><button type="button" onclick="eliminarTramo(${idContador})" class="btn-action" style="background: #fee2e2; color: #dc2626; border: none; cursor: pointer;"><i class="fas fa-trash"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        }
 
-document.getElementById('calc').onclick=async e=>{
-  e.preventDefault();
-  const emp=document.getElementById('empleado').value.trim();
-  if(!emp){alert('Escribe tu nombre');return;}
-  const tramos=[];
-  tabla.querySelectorAll('tr').forEach((tr,i)=>{if(i===0)return;
-    const li=parseFloat(tr.querySelector('.li').value)||0,lf=parseFloat(tr.querySelector('.lf').value)||0;
-    if(lf<=li)return;
-    tramos.push({fecha:tr.querySelector('.f').value,vehiculo:tr.querySelector('.v').value,
-      unidad:tr.querySelector('.u').value,lectura_inicial:li,lectura_final:lf});});
-  if(!tramos.length){alert('Agrega al menos un tramo con lectura final mayor que la inicial');return;}
-  const fd=new FormData();
-  fd.append('empleado',emp);fd.append('departamento',document.getElementById('departamento').value);
-  fd.append('zona',document.getElementById('zona').value);fd.append('deducciones',document.getElementById('deducciones').value||'0');
-  fd.append('tramos',JSON.stringify(tramos));fd.append('guardar','1');
-  est.innerHTML=' <span class="spin"></span> Calculando...';
-  try{const r=await fetch('/api/depreciacion',{method:'POST',body:fd});const d=await r.json();
-    if(d.error){res.innerHTML='<div class="msg err">'+d.error+'</div>';}else pintar(d);}
-  catch(_){res.innerHTML='<div class="msg err">No se pudo calcular.</div>';}
-  est.innerHTML='';
-};
-function pintar(d){
-  let h='<div class="card" style="margin-top:16px"><span class="badge CUMPLE">DEPRECIACION CALCULADA</span>';
-  if(d.folio)h+=' <span class="small">Folio: <b>'+d.folio+'</b></span>';
-  h+='<table style="margin-top:12px"><tr><th>Fecha</th><th>Vehiculo</th><th>Lectura</th><th>Unidad</th><th>km</th><th>Depreciacion</th></tr>';
-  d.detalle.forEach(t=>{h+='<tr><td>'+(t.fecha||'-')+'</td><td>'+(t.vehiculo||'-')+'</td><td>'+t.lectura_inicial.toFixed(0)+' \u2192 '+t.lectura_final.toFixed(0)+'</td><td>'+t.unidad+'</td><td>'+t.km.toFixed(1)+'</td><td>L '+t.depreciacion.toFixed(2)+'</td></tr>';});
-  h+='</table>';
-  h+='<p class="small" style="margin-top:10px">Total recorrido: <b>'+d.total_km.toFixed(1)+' km</b> &nbsp; Factor: <b>L '+d.factor_lps_km+'/km</b> &nbsp; Deducciones: <b>L '+Number(d.deducciones).toFixed(2)+'</b></p>';
-  h+='<p style="font-size:17px">Pago por depreciacion: <b>L '+d.pago_neto.toFixed(2)+'</b></p>';
-  h+='<div class="msg ok">Quedo registrada para que la encargada la revise y apruebe.</div></div>';
-  res.innerHTML=h;res.scrollIntoView({behavior:'smooth'});
-}
-</script>
+        function eliminarTramo(id) {
+            document.getElementById(`tramo-${id}`).remove();
+            calcularTotal();
+        }
+
+        function calcularFila(input) {
+            const tr = input.closest('tr');
+            const inicial = parseFloat(tr.querySelector('.in-inicial').value) || 0;
+            const final = parseFloat(tr.querySelector('.in-final').value) || 0;
+            const unidad = tr.querySelector('.in-unidad').value;
+            
+            let distancia = final - inicial;
+            if (distancia < 0) distancia = 0;
+            
+            if (unidad === 'mi') {
+                distancia = distancia * 1.60934; // Convertir a km
+            }
+            
+            tr.querySelector('.txt-distancia').innerText = `${distancia.toFixed(2)} km`;
+            calcularTotal();
+        }
+
+        function calcularTotal() {
+            let totalKm = 0;
+            document.querySelectorAll('#tabla-tramos tbody tr').forEach(tr => {
+                const inicial = parseFloat(tr.querySelector('.in-inicial').value) || 0;
+                const final = parseFloat(tr.querySelector('.in-final').value) || 0;
+                const unidad = tr.querySelector('.in-unidad').value;
+                let dist = final - inicial;
+                if (dist < 0) dist = 0;
+                if (unidad === 'mi') dist = dist * 1.60934;
+                totalKm += dist;
+            });
+            
+            const deducciones = parseFloat(document.getElementById('emp-deducciones').value) || 0;
+            let totalPagar = (totalKm * FACTOR) - deducciones;
+            if (totalPagar < 0) totalPagar = 0;
+            
+            document.getElementById('total-pagar').innerText = `L ${totalPagar.toFixed(2)}`;
+        }
+
+        document.getElementById('emp-deducciones').addEventListener('input', calcularTotal);
+
+        // Agregar un tramo por defecto al cargar la página
+        agregarTramo();
+
+        document.getElementById('form-depreciacion').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const empleado = document.getElementById('emp-nombre').value;
+            const departamento = document.getElementById('emp-depto').value;
+            const zona = document.getElementById('emp-zona').value;
+            const deducciones = document.getElementById('emp-deducciones').value;
+            
+            const tramos = [];
+            document.querySelectorAll('#tabla-tramos tbody tr').forEach(tr => {
+                tramos.push({
+                    fecha: tr.querySelector('.in-fecha').value,
+                    vehiculo: tr.querySelector('.in-vehiculo').value,
+                    unidad: tr.querySelector('.in-unidad').value,
+                    lectura_inicial: parseFloat(tr.querySelector('.in-inicial').value) || 0,
+                    lectura_final: parseFloat(tr.querySelector('.in-final').value) || 0
+                });
+            });
+
+            if (tramos.length === 0) {
+                alert("Debes agregar al menos un tramo.");
+                return;
+            }
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            const resDiv = document.getElementById('resultado-dep');
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculando...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('empleado', empleado);
+            formData.append('departamento', departamento);
+            formData.append('zona', zona);
+            formData.append('deducciones', deducciones);
+            formData.append('tramos', JSON.stringify(tramos));
+            formData.append('guardar', '1');
+
+            try {
+                const response = await fetch('/api/depreciacion', { method: 'POST', body: formData });
+                const data = await response.json();
+                
+                resDiv.style.display = 'block';
+                if (data.error) {
+                    resDiv.innerHTML = `<div style="background: #fee2e2; color: #dc2626; padding: 20px; border-radius: 12px; text-align: center;">${data.error}</div>`;
+                } else {
+                    resDiv.innerHTML = `<div style="background: #dcfce7; color: #16a34a; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #bbf7d0;">
+                        <h3><i class="fas fa-check-circle"></i> ¡Registro Exitoso!</h3>
+                        <p style="font-size: 1.1rem;">Pago Neto: <strong>L ${data.pago_neto}</strong></p>
+                        <p style="font-size: 0.9rem;">Folio: <strong>${data.folio}</strong></p>
+                    </div>`;
+                }
+            } catch (error) {
+                resDiv.innerHTML = `<div style="background: #fee2e2; color: #dc2626; padding: 20px; border-radius: 12px; text-align: center;">Error de conexión.</div>`;
+                resDiv.style.display = 'block';
+            } finally {
+                btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Enviar y Registrar Solicitud';
+                btn.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>
