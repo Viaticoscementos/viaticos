@@ -1,81 +1,173 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Panel de Viaticos - CENOSA</title>
-<link rel="stylesheet" href="/static/estilos.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Viáticos CENOSA</title>
+    <link rel="stylesheet" href="/static/estilos.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Librería para los gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-<div class="topbar">
-  <img src="/static/logo_header.png" alt="CENOSA" onerror="this.style.display='none'">
-  <h1>Panel de Viaticos</h1>
-  <span class="sp"></span>
-  <span class="small" style="color:#dbe7f5">{{ usuario }}</span>
-  <a href="/panel/empleados">Empleados y config</a>
-  <a href="/panel/tabla">Exportar todo</a>
-  <a href="/logout">Salir</a>
-</div>
+<body class="dashboard-body">
 
-<div class="wrap" style="max-width:1200px">
-  <div class="tabs">
-    <a href="/panel?tab=cumplen" class="{{ 'act' if tab=='cumplen' }}">Cumplen <span class="n">{{ conteos.cumplen }}</span></a>
-    <a href="/panel?tab=nocumplen" class="{{ 'act' if tab=='nocumplen' }}">No cumplen <span class="n">{{ conteos.nocumplen }}</span></a>
-    <a href="/panel?tab=pendientes" class="{{ 'act' if tab=='pendientes' }}">Pendientes <span class="n">{{ conteos.pendientes }}</span></a>
-    <a href="/panel?tab=historial" class="{{ 'act' if tab=='historial' }}">Historial <span class="n">{{ conteos.historial }}</span></a>
-  </div>
+    <div class="dashboard-container">
+        <!-- MENÚ LATERAL -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <img src="/static/logo_color.png" alt="Logo" style="height: 40px; margin-bottom: 10px;">
+                <h2>Viáticos</h2>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="/panel" class="active"><i class="fas fa-home"></i> Inicio</a>
+                <a href="#"><i class="fas fa-file-invoice-dollar"></i> Facturas</a>
+                <a href="#"><i class="fas fa-users"></i> Empleados</a>
+                <a href="#"><i class="fas fa-chart-pie"></i> Reportes</a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+            </div>
+        </aside>
 
-  {% macro tabla(items, acciones=False) %}
-  <div class="card" style="overflow-x:auto">
-    {% if items %}
-    <table>
-      <tr><th>Folio</th><th>Empleado</th><th>Depto</th><th>Categoria</th><th>Fecha</th>
-      <th>RTN</th><th>CAI</th><th>Monto</th><th>Reemb.</th><th>Estado</th><th>Detalle</th>
-      <th>Factura</th>{% if acciones %}<th>Accion</th>{% else %}<th>Memo</th>{% endif %}</tr>
-      {% for s in items %}
-      <tr>
-        <td>{{ s.folio }}</td><td>{{ s.empleado }}</td><td>{{ s.departamento }}</td>
-        <td>{{ (s.categoria or '')|title }}</td><td>{{ s.fecha_compra or '-' }}</td>
-        <td>{{ s.rtn or '-' }}</td><td style="max-width:140px;word-break:break-all">{{ s.cai or '-' }}</td>
-        <td>L {{ '%.2f'|format(s.monto or 0) }}</td>
-        <td>L {{ '%.2f'|format(s.monto_reembolsable or 0) }}</td>
-        <td><span class="pill {{ s.estado }}">{{ s.estado }}</span></td>
-        <td class="small">{{ s.motivos or s.observaciones or 'OK' }}</td>
-        <td>{% if s.archivo %}<a href="/panel/factura/{{ s.id }}" target="_blank">ver</a>{% else %}-{% endif %}</td>
-        {% if acciones %}
-        <td>
-          <form method="post" action="/panel/decidir" class="flex" style="gap:4px">
-            <input type="hidden" name="sid" value="{{ s.id }}">
-            <input name="observaciones" placeholder="nota" style="width:90px;padding:5px">
-            <button class="btn ok sm" name="decision" value="APROBAR">Aprobar</button>
-            <button class="btn no sm" name="decision" value="RECHAZAR">Rechazar</button>
-          </form>
-        </td>
-        {% else %}
-        <td><a class="btn sec sm" href="/panel/memo/{{ s.id }}">Memo</a></td>
-        {% endif %}
-      </tr>
-      {% endfor %}
-    </table>
-    {% else %}
-    <p class="small">No hay registros en esta pestaña.</p>
-    {% endif %}
-  </div>
-  {% endmacro %}
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="main-content">
+            <!-- Barra Superior -->
+            <header class="top-navbar">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Buscar factura o empleado...">
+                </div>
+                <div class="user-info">
+                    <span>Hola, <strong>{{ session.get('admin_user', 'Encargada') }}</strong></span>
+                    <div class="avatar"><i class="fas fa-user-tie"></i></div>
+                </div>
+            </header>
 
-  {% if tab=='cumplen' %}
-    <p class="small">Facturas que cumplen y estan listas para aprobar.</p>
-    {{ tabla(cumplen, acciones=True) }}
-  {% elif tab=='nocumplen' %}
-    <p class="small">Facturas que no cumplen (revisar motivo en rojo).</p>
-    {{ tabla(nocumplen, acciones=False) }}
-  {% elif tab=='pendientes' %}
-    <p class="small">Todo lo que espera decision (cumplen + exceden limite).</p>
-    {{ tabla(pendientes, acciones=True) }}
-  {% else %}
-    <p class="small">Facturas ya aprobadas o rechazadas.</p>
-    {{ tabla(historial, acciones=False) }}
-  {% endif %}
-</div>
+            <!-- Área de Tarjetas y Gráficos -->
+            <div class="dashboard-grid">
+                
+                <!-- Tarjetas Resumen -->
+                <div class="kpi-card">
+                    <div class="kpi-icon green"><i class="fas fa-check-circle"></i></div>
+                    <div class="kpi-data">
+                        <h3>Facturas Aprobadas</h3>
+                        <p>0</p> <!-- Aquí luego pondremos la variable de Python -->
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon orange"><i class="fas fa-clock"></i></div>
+                    <div class="kpi-data">
+                        <h3>Pendientes</h3>
+                        <p>0</p>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon red"><i class="fas fa-times-circle"></i></div>
+                    <div class="kpi-data">
+                        <h3>Rechazadas</h3>
+                        <p>0</p>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon blue"><i class="fas fa-wallet"></i></div>
+                    <div class="kpi-data">
+                        <h3>Total Viáticos</h3>
+                        <p>$0.00</p>
+                    </div>
+                </div>
+
+                <!-- Contenedores de Gráficos -->
+                <div class="chart-card">
+                    <h3>Gastos por Mes</h3>
+                    <canvas id="graficoBarras"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>Estatus de Facturas</h3>
+                    <canvas id="graficoDona"></canvas>
+                </div>
+            </div>
+
+            <!-- Sección de Tabla de Facturas -->
+            <div class="table-section">
+                <div class="table-header">
+                    <h3>Últimas Facturas Recibidas</h3>
+                </div>
+                
+                <!-- Pestañas originales (estilizadas) -->
+                <div class="tabs modern-tabs">
+                    <a href="#" class="act">Cumplen</a>
+                    <a href="#">No cumplen</a>
+                    <a href="#">Pendientes</a>
+                    <a href="#">Historial</a>
+                </div>
+
+                <!-- Tabla de Datos -->
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Empleado</th>
+                                <th>Fecha</th>
+                                <th>Monto</th>
+                                <th>Estatus</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Juan Pérez</td>
+                                <td>Hoy, 10:30 AM</td>
+                                <td>$1,250.00</td>
+                                <td><span class="pill CUMPLE">Cumple</span></td>
+                                <td><button class="btn sm">Ver</button></td>
+                            </tr>
+                            <tr>
+                                <td>María López</td>
+                                <td>Ayer, 04:15 PM</td>
+                                <td>$850.00</td>
+                                <td><span class="pill REVISAR">Revisar</span></td>
+                                <td><button class="btn sm">Ver</button></td>
+                            </tr>
+                            <!-- Aquí iría tu bucle {% for factura in facturas %} -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script para inicializar los gráficos -->
+    <script>
+        // Gráfico de Barras
+        const ctxBarras = document.getElementById('graficoBarras').getContext('2d');
+        new Chart(ctxBarras, {
+            type: 'bar',
+            data: {
+                labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Gastos ($)',
+                    data: [1200, 1900, 3000, 5000, 2000, 3000],
+                    backgroundColor: '#008f39',
+                    borderRadius: 6
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        // Gráfico de Dona
+        const ctxDona = document.getElementById('graficoDona').getContext('2d');
+        new Chart(ctxDona, {
+            type: 'doughnut',
+            data: {
+                labels: ['Aprobadas', 'Pendientes', 'Rechazadas'],
+                datasets: [{
+                    data: [12, 5, 2],
+                    backgroundColor: ['#008f39', '#f59e0b', '#ef4444'],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, cutout: '70%' }
+        });
+    </script>
 </body>
 </html>
