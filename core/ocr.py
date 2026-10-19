@@ -3,7 +3,7 @@ import re
 import cv2
 import numpy as np
 import pdfplumber
-import pymupdf  # <-- Cambiado para quitar el warning
+import pymupdf
 from PIL import Image
 import pytesseract
 
@@ -18,10 +18,9 @@ def extraer_texto_pdf(ruta_pdf):
     except Exception as e:
         print(f"Error leyendo PDF con pdfplumber: {e}")
     
-    # Si pdfplumber no sacó texto, usamos PyMuPDF + OCR
     if len(texto.strip()) < 50:
         try:
-            doc = pymupdf.open(ruta_pdf) # <-- Cambiado aquí también
+            doc = pymupdf.open(ruta_pdf)
             page = doc.load_page(0)
             pix = page.get_pixmap(dpi=300)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
@@ -50,7 +49,6 @@ def analizar(ruta_archivo):
     else:
         texto = extraer_texto_imagen(ruta_archivo)
 
-    # Limpieza de texto para facilitar búsqueda
     texto_limpio = texto.replace('\n', ' ').replace('\r', ' ')
     texto_limpio = re.sub(r'\s+', ' ', texto_limpio)
 
@@ -89,23 +87,47 @@ def analizar(ruta_archivo):
         "texto_ocr": texto
     }
 
+# --- NUEVA LÓGICA MEJORADA PARA EL ODÓMETRO ---
 def leer_odometro(ruta_imagen):
     try:
+        # 1. Leer la imagen
         img = cv2.imread(ruta_imagen)
         if img is None:
             return {"valor": None, "texto": "No se pudo cargar la imagen"}
 
+        # 2. Convertir a escala de grises
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        gray = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
-        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
         
-        config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789.'
+        # 3. Ampliar la imagen (x4) para que los números sean gigantes
+        gray = cv2.resize(gray, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+        
+        # 4. Aplicar un desenfoque Gaussiano para quitar el "brillo" de la pantalla LED
+        blur = cv2.GaussianBlur(gray, (5, 5), 0)
+        
+        # 5. Umbralización Inversa (Fondo blanco, números negros)
+        # Usamos un valor de corte de 120 para ignorar los azules oscuros del fondo
+        _, thresh = cv2.threshold(blur, 120, 255, cv2.THRESH_BINARY_INV)
+        
+        # 6. Operaciones Morfológicas: Cerrar huecos en los números
+        kernel = np.ones((3,3), np.uint8)
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        
+        # 7. Agregar un borde blanco grueso para que Tesseract no se confunda con el texto de los bordes
+        thresh = cv2.copyMakeBorder(thresh, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+        
+        # 8. Configurar Tesseract
+        # PSM 7: Trata la imagen como una sola línea de texto.
+        # Whitelist: SOLO busca números (ignora la 'm' y la 'i' de "mi")
+        config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789'
         texto_extraido = pytesseract.image_to_string(thresh, config=config)
         
+        # 9. Limpiar el texto
         texto_limpio = texto_extraido.strip().replace(" ", "")
-        numeros = re.findall(r'\d{3,8}', texto_limpio)
+        # Buscamos secuencias de 4 a 8 dígitos
+        numeros = re.findall(r'\d{4,8}', texto_limpio)
         
         if numeros:
+            # Tomamos el número más largo que encontró
             valor_final = max(numeros, key=len)
             return {"valor": valor_final, "texto": texto_extraido}
         else:
