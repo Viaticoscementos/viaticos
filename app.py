@@ -254,14 +254,14 @@ def ver_factura(request: Request, sid: int):
     if not ruta.exists(): raise HTTPException(404)
     return FileResponse(str(ruta))
 
-# --- RUTAS DE REPORTES (RESTAURADAS) ---
+# --- RUTAS DE REPORTES ---
 @app.get("/panel/memo/{sid}")
 def memo(request: Request, sid: int):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     s = db.obtener_solicitud(sid)
     if not s: raise HTTPException(404)
     ruta = reportes.generar_memo(s)
-    return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/pdf")
 
 @app.get("/panel/memo-empleado/{empleado}")
 def memo_empleado(request: Request, empleado: str):
@@ -269,14 +269,14 @@ def memo_empleado(request: Request, empleado: str):
     sols = [s for s in (db.listar_solicitudes(estado="APROBADO")) if (s.get("empleado") or "").lower() == empleado.lower()]
     if not sols: 
         raise HTTPException(404, "Sin facturas aprobadas para ese empleado")
-    ruta = reportes.generar_memo(sols, empleado=empleado)
-    return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    ruta = reportes.generar_memo_pdf(sols, empleado=empleado)
+    return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/pdf")
 
 @app.get("/panel/tabla")
 def tabla(request: Request, estado: str = ""):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     sols = db.listar_solicitudes(estado=estado or None)
-    ruta = reportes.generar_tabla(sols)
+    ruta = reportes.generar_tabla(sols) # Esta sigue siendo Excel
     return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 # ---------------------------------------
 
