@@ -13,6 +13,7 @@
             .header-btn { width: 100%; justify-content: center; }
             .content-wrapper { padding-top: 15px !important; padding-left: 10px !important; padding-right: 10px !important; }
             .card { padding: 20px !important; }
+            .grid-odometro { grid-template-columns: 1fr !important; }
         }
     </style>
 </head>
@@ -62,7 +63,6 @@
                     </div>
                     <div class="form-group">
                         <label>Categoría del gasto</label>
-                        <!-- AQUI AGREGAMOS EL ONCHANGE PARA MOSTRAR EL ODOMETRO -->
                         <select name="categoria" id="select-categoria" required onchange="verificarCategoria(this)" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                             {% for cat in categorias %}
                             <option value="{{ cat }}">{{ cat }}</option>
@@ -75,14 +75,37 @@
                     </div>
                 </div>
 
-                <!-- SECCIÓN OCULTA PARA EL ODÓMETRO -->
-                <div id="seccion-odometro" style="display: none; margin-top: 15px; background: #f0fdf4; border: 2px dashed #16a34a; padding: 20px; border-radius: 12px; text-align: center;">
-                    <i class="fas fa-tachometer-alt" style="font-size: 2rem; color: #16a34a; margin-bottom: 10px;"></i>
-                    <p style="margin: 0; font-weight: bold; color: #166534; font-size: 1.05rem;">Foto del Odómetro (Obligatorio para Combustible)</p>
-                    <p style="margin: 5px 0 15px; font-size: 0.85rem; color: #475569;">Sube una foto clara del tablero donde se vea el kilometraje actual.</p>
-                    <input type="file" name="odometro" id="odometro-file" accept="image/*" style="display: block; margin: 0 auto; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; width: 100%; max-width: 300px;">
+                <!-- SECCIÓN DE KILOMETRAJE PARA COMBUSTIBLE -->
+                <div id="seccion-odometro" style="display: none; margin-top: 15px; background: #f0fdf4; border: 2px dashed #16a34a; padding: 20px; border-radius: 12px;">
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <i class="fas fa-tachometer-alt" style="font-size: 2rem; color: #16a34a; margin-bottom: 10px;"></i>
+                        <p style="margin: 0; font-weight: bold; color: #166534; font-size: 1.05rem;">Kilometraje (Obligatorio para Combustible)</p>
+                        <p style="margin: 5px 0 15px; font-size: 0.85rem; color: #475569;">Ingresa el kilometraje inicial y final. Puedes usar la cámara para el final.</p>
+                    </div>
+                    
+                    <div class="grid-odometro" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <!-- Km Inicial -->
+                        <div>
+                            <label style="font-size: 0.85rem; font-weight: 600; color: #166534;">Km Inicial</label>
+                            <input type="number" name="km_inicial" id="km_inicial" required placeholder="Ej. 15000" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+                        </div>
+                        
+                        <!-- Km Final con botón de cámara -->
+                        <div>
+                            <label style="font-size: 0.85rem; font-weight: 600; color: #166534;">Km Final</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="number" name="km_final" id="km_final" required placeholder="Ej. 15400" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+                                <button type="button" class="btn-action" onclick="document.getElementById('foto_odometro').click()" style="background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; padding: 0 12px; border-radius: 6px;" title="Subir foto para leer Km Final">
+                                    <i class="fas fa-camera"></i>
+                                </button>
+                            </div>
+                            <input type="file" id="foto_odometro" accept="image/*" style="display: none;" onchange="procesarFotoOdometro(this)">
+                        </div>
+                    </div>
+                    <p id="status-odo" style="font-size: 0.85rem; color: #16a34a; text-align: center; margin-top: 10px; font-weight: bold;"></p>
                 </div>
 
+                <!-- SUBIDA DE FACTURA -->
                 <div class="form-group" style="margin-top: 20px; border: 2px dashed var(--verde-cenosa); padding: 40px 20px; border-radius: 12px; text-align: center; background: #f8fafc; cursor: pointer;" onclick="document.getElementById('archivos').click()">
                     <i class="fas fa-file-invoice" style="font-size: 3rem; color: var(--verde-cenosa); margin-bottom: 15px;"></i>
                     <p style="margin: 0; font-weight: 600; color: var(--text-main); font-size: 1.1rem;">Haz clic aquí para subir tu factura</p>
@@ -101,14 +124,51 @@
     </div>
 
     <script>
-        // Función para mostrar el campo del odómetro si es Combustible
         function verificarCategoria(select) {
             const divOdometro = document.getElementById('seccion-odometro');
+            const inputKmInicial = document.getElementById('km_inicial');
+            const inputKmFinal = document.getElementById('km_final');
+
             if (select.value === 'Combustible') {
                 divOdometro.style.display = 'block';
+                inputKmInicial.required = true;
+                inputKmFinal.required = true;
             } else {
                 divOdometro.style.display = 'none';
-                document.getElementById('odometro-file').value = ''; // Limpiamos si cambia de opinión
+                inputKmInicial.required = false;
+                inputKmFinal.required = false;
+                inputKmInicial.value = '';
+                inputKmFinal.value = '';
+                document.getElementById('status-odo').innerHTML = '';
+            }
+        }
+
+        async function procesarFotoOdometro(input) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const status = document.getElementById('status-odo');
+            
+            status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Leyendo odómetro...';
+            status.style.color = '#d97706';
+
+            const formData = new FormData();
+            formData.append('archivo', file);
+
+            try {
+                const res = await fetch('/api/leer-odometro', { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                if (data.valor) {
+                    document.getElementById('km_final').value = data.valor;
+                    status.innerHTML = `✅ Kilometraje detectado: <strong>${data.valor}</strong> km`;
+                    status.style.color = '#16a34a';
+                } else {
+                    status.innerHTML = '⚠️ No se pudo leer el número. Ingrésalo manualmente.';
+                    status.style.color = '#dc2626';
+                }
+            } catch (e) {
+                status.innerHTML = '⚠️ Error al procesar la imagen.';
+                status.style.color = '#dc2626';
             }
         }
 
@@ -127,15 +187,18 @@
             const form = e.target;
             const btn = form.querySelector('button[type="submit"]');
             const resDiv = document.getElementById('resultado');
-            const categoria = document.getElementById('select-categoria').value;
             
-            // Validar que si es combustible, haya subido el odómetro
-            if (categoria === 'Combustible' && document.getElementById('odometro-file').files.length === 0) {
-                alert("⚠️ Para los gastos de Combustible es obligatorio subir la foto del odómetro.");
-                return;
+            // Validación extra para combustible
+            if (document.getElementById('select-categoria').value === 'Combustible') {
+                const ki = parseFloat(document.getElementById('km_inicial').value) || 0;
+                const kf = parseFloat(document.getElementById('km_final').value) || 0;
+                if (kf <= ki) {
+                    alert("⚠️ El Kilometraje Final debe ser mayor al Kilometraje Inicial.");
+                    return;
+                }
             }
 
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando factura(s)...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analizando...';
             btn.disabled = true;
             resDiv.style.display = 'none';
             
@@ -150,7 +213,6 @@
                     resDiv.innerHTML = `<div style="background: #dcfce7; color: #16a34a; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #bbf7d0;">
                         <h3><i class="fas fa-check-circle"></i> ¡Factura Registrada!</h3>
                         <p style="font-size: 1.1rem;">Monto detectado: <strong>L ${data.monto_extraido}</strong></p>
-                        <p style="font-size: 0.9rem;">${data.motivos.includes('KM:') ? '<strong>' + data.motivos.split('|')[0] + '</strong>' : ''}</p>
                         <p style="font-size: 0.9rem;">Folio: <strong>${data.folio}</strong></p>
                     </div>`;
                 } else {
