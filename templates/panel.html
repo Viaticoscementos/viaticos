@@ -10,11 +10,6 @@
 </head>
 <body class="dashboard-body">
 
-    <!-- Protegemos la variable para que no dé error si no hay sesión -->
-    {% set usuario_actual = request.session.get('usuario', 'Usuario') if request and request.session else 'Usuario' %}
-    <!-- Suponemos que en tu app.py guardas el rol en la sesión (ej. 'admin' o 'empleado') -->
-    {% set es_admin = request.session.get('rol') == 'admin' if request and request.session else True %}
-
     <div class="dashboard-container">
         <!-- MENÚ LATERAL -->
         <aside class="sidebar">
@@ -25,13 +20,12 @@
             <nav class="sidebar-menu">
                 <a href="/panel" class="active"><i class="fas fa-home"></i> Inicio</a>
                 
-                {% if es_admin %}
+                {% if rol == 'admin' %}
                 <a href="#"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
-                <a href="#"><i class="fas fa-users"></i> Empleados</a>
+                <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados</a>
                 <a href="#"><i class="fas fa-chart-pie"></i> Reportes</a>
                 {% else %}
-                <a href="#"><i class="fas fa-upload"></i> Subir Factura</a>
-                <a href="#"><i class="fas fa-list"></i> Mis Solicitudes</a>
+                <a href="/?token={{ token }}"><i class="fas fa-upload"></i> Subir Factura</a>
                 {% endif %}
             </nav>
             <div class="sidebar-footer">
@@ -48,25 +42,25 @@
                     <input type="text" placeholder="Buscar...">
                 </div>
                 <div class="user-info">
-                    <span>Hola, <strong>{{ usuario_actual }}</strong> {% if es_admin %}(Admin){% else %}(Empleado){% endif %}</span>
+                    <span>Hola, <strong>{{ usuario }}</strong> {% if rol == 'admin' %}(Admin){% else %}(Empleado){% endif %}</span>
                     <div class="avatar"><i class="fas fa-user-tie"></i></div>
                 </div>
             </header>
 
-            <!-- VISTA PARA ADMINISTRADORES -->
-            {% if es_admin %}
+            <!-- VISTA PARA ADMINISTRADORES (Gráficos y Tarjetas) -->
+            {% if rol == 'admin' %}
             <div class="dashboard-grid">
                 <div class="kpi-card">
                     <div class="kpi-icon green"><i class="fas fa-check-circle"></i></div>
-                    <div class="kpi-data"><h3>Aprobadas</h3><p>0</p></div>
+                    <div class="kpi-data"><h3>Aprobadas</h3><p>{{ conteos.cumplen }}</p></div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-icon orange"><i class="fas fa-clock"></i></div>
-                    <div class="kpi-data"><h3>Pendientes</h3><p>0</p></div>
+                    <div class="kpi-data"><h3>Pendientes</h3><p>{{ conteos.revisar }}</p></div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-icon red"><i class="fas fa-times-circle"></i></div>
-                    <div class="kpi-data"><h3>Rechazadas</h3><p>0</p></div>
+                    <div class="kpi-data"><h3>Rechazadas</h3><p>{{ conteos.nocumplen }}</p></div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-icon blue"><i class="fas fa-wallet"></i></div>
@@ -82,19 +76,35 @@
                     <canvas id="graficoDona"></canvas>
                 </div>
             </div>
+            {% else %}
+            <!-- VISTA PARA EMPLEADOS (Boton para subir factura) -->
+            <div style="padding: 30px 30px 0;">
+                <div class="kpi-card" style="background: #e8f5e9; border: 1px solid #c8e6c9;">
+                    <div class="kpi-icon green"><i class="fas fa-file-upload"></i></div>
+                    <div class="kpi-data">
+                        <h3>¿Tienes una nueva factura?</h3>
+                        <p style="font-size: 1rem; font-weight: normal; margin-top: 5px;">
+                            Sube tu comprobante para que sea revisado por administración.
+                        </p>
+                        <a href="/?token={{ token }}" class="btn" style="margin-top: 15px; display: inline-block; background: var(--cenosa-verde); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none;">
+                            Subir Factura Ahora
+                        </a>
+                    </div>
+                </div>
+            </div>
             {% endif %}
 
-            <!-- VISTA PARA EMPLEADOS (O para todos, tabla general) -->
+            <!-- TABLA DE FACTURAS (Para ambos roles) -->
             <div class="table-section">
                 <div class="table-header">
-                    <h3>{% if es_admin %}Últimas Facturas Recibidas{% else %}Mis Facturas Recientes{% endif %}</h3>
+                    <h3>{% if rol == 'admin' %}Últimas Facturas Recibidas{% else %}Mis Facturas Recientes{% endif %}</h3>
                 </div>
                 
                 <div class="tabs modern-tabs">
-                    <a href="#" class="act">Cumplen</a>
-                    <a href="#">No cumplen</a>
-                    <a href="#">Pendientes</a>
-                    <a href="#">Historial</a>
+                    <a href="/panel?tab=cumplen" class="{% if tab == 'cumplen' %}act{% endif %}">Cumplen ({{ conteos.cumplen }})</a>
+                    <a href="/panel?tab=nocumplen" class="{% if tab == 'nocumplen' %}act{% endif %}">No cumplen ({{ conteos.nocumplen }})</a>
+                    <a href="/panel?tab=pendientes" class="{% if tab == 'pendientes' %}act{% endif %}">Pendientes ({{ conteos.pendientes }})</a>
+                    <a href="/panel?tab=historial" class="{% if tab == 'historial' %}act{% endif %}">Historial ({{ conteos.historial }})</a>
                 </div>
 
                 <div class="table-responsive">
@@ -109,13 +119,29 @@
                             </tr>
                         </thead>
                         <tbody>
+                            {% set lista_actual = cumplen if tab == 'cumplen' else (nocumplen if tab == 'nocumplen' else (pendientes if tab == 'pendientes' else historial)) %}
+                            
+                            {% for factura in lista_actual %}
                             <tr>
-                                <td>Juan Pérez</td>
-                                <td>Hoy, 10:30 AM</td>
-                                <td>$1,250.00</td>
-                                <td><span class="pill CUMPLE">Cumple</span></td>
-                                <td><button class="btn sm">Ver</button></td>
+                                <td>{{ factura.empleado }}</td>
+                                <td>{{ factura.fecha_compra or 'Reciente' }}</td>
+                                <td>${{ factura.monto }}</td>
+                                <td><span class="pill {{ factura.estado }}">{{ factura.estado }}</span></td>
+                                <td>
+                                    {% if rol == 'admin' %}
+                                    <a href="/panel/factura/{{ factura.id }}" target="_blank" class="btn sm">Ver</a>
+                                    {% else %}
+                                    <span class="small">En revisión</span>
+                                    {% endif %}
+                                </td>
                             </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 30px; color: #64748b;">
+                                    No hay registros en esta pestaña.
+                                </td>
+                            </tr>
+                            {% endfor %}
                         </tbody>
                     </table>
                 </div>
@@ -123,9 +149,9 @@
         </main>
     </div>
 
-    {% if es_admin %}
+    <!-- Gráficos solo para admin -->
+    {% if rol == 'admin' %}
     <script>
-        // Solo cargamos los gráficos si es admin
         const ctxBarras = document.getElementById('graficoBarras').getContext('2d');
         new Chart(ctxBarras, {
             type: 'bar',
@@ -141,7 +167,7 @@
             type: 'doughnut',
             data: {
                 labels: ['Aprobadas', 'Pendientes', 'Rechazadas'],
-                datasets: [{ data: [12, 5, 2], backgroundColor: ['#008f39', '#f59e0b', '#ef4444'], borderWidth: 0 }]
+                datasets: [{ data: [{{ conteos.cumplen|default(0) }}, {{ conteos.revisar|default(0) }}, {{ conteos.nocumplen|default(0) }}], backgroundColor: ['#008f39', '#f59e0b', '#ef4444'], borderWidth: 0 }]
             },
             options: { responsive: true, cutout: '70%' }
         });
