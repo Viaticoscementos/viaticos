@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso - Viáticos CENOSA</title>
     <link rel="stylesheet" href="/static/estilos.css">
-    <!-- Iconos para los campos (opcional, hace que se vea más moderno) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="login-body">
@@ -19,12 +18,13 @@
     <!-- Contenedor central del Login -->
     <main class="login-main">
         <div class="login-card">
-            <!-- Aquí va el logo. Si tu imagen se llama diferente, cambia 'logo_color.png' por el nombre exacto -->
+            <!-- Logo -->
             <div class="logo-container">
                 <img src="/static/logo_color.png" alt="Cementos del Norte" class="login-logo">
             </div>
 
-            <h2>Acceso de la encargada</h2>
+            <!-- AQUÍ PUEDES CAMBIAR EL TÍTULO POR EL QUE ELIJAS -->
+            <h2>Iniciar Sesión</h2>
             
             {% if error %}
             <div class="msg err" style="background: #fde8e6; color: #c0392b; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; text-align: center; animation: shake 0.5s;">
@@ -35,7 +35,7 @@
             <form method="POST" action="/login">
                 <div class="form-group">
                     <label for="usuario"><i class="fas fa-user"></i> Usuario</label>
-                    <input type="text" id="usuario" name="usuario" placeholder="Ej. Bertha Padilla" required>
+                    <input type="text" id="usuario" name="usuario" placeholder="Ingresa tu usuario" required>
                 </div>
                 
                 <div class="form-group">
