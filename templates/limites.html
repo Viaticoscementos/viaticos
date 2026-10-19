@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Límites por Puesto - Viáticos CENOSA</title>
+    <link rel="stylesheet" href="/static/estilos.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .matriz-limites input {
+            width: 100%; padding: 8px; text-align: right; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;
+        }
+        .matriz-limites th { font-size: 0.75rem; padding: 10px 5px; text-align: center; }
+        .matriz-limites td { padding: 8px 10px; }
+    </style>
+</head>
+<body class="dashboard-body">
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <img src="/static/logo_color.png" alt="Logo" style="height: 45px;">
+                <h2>Sistema Viáticos</h2>
+            </div>
+            <nav class="sidebar-menu">
+                <p class="menu-label">Principal</p>
+                <a href="/panel"><i class="fas fa-home"></i> Inicio</a>
+                <a href="/panel/facturas"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
+                
+                <p class="menu-label" style="margin-top: 15px;">Administración</p>
+                <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados y Config</a>
+                <a href="/panel/limites" class="active"><i class="fas fa-sliders-h"></i> Límites por Puesto</a>
+                <a href="/panel/presupuestos"><i class="fas fa-money-check-alt"></i> Presupuestos 2026</a>
+                <a href="/panel/reportes"><i class="fas fa-chart-pie"></i> Reportes</a>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-navbar">
+                <div class="user-info" style="margin-left: auto;">
+                    <div class="user-profile">
+                        <div class="text">
+                            <span class="name">{{ usuario }}</span>
+                            <span class="role">Administrador</span>
+                        </div>
+                        <div class="avatar"><i class="fas fa-user"></i></div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-wrapper" style="max-width: 1400px;">
+                <div class="dashboard-header">
+                    <h2>Límites Semanales por Puesto</h2>
+                    <p>Configura los montos máximos permitidos por categoría. Esto se aplicará automáticamente a todos los empleados según su puesto.</p>
+                </div>
+
+                {% if msg == 'ok' %}
+                <div style="background: #dcfce7; color: #16a34a; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: bold;">
+                    <i class="fas fa-check-circle"></i> Límites guardados correctamente.
+                </div>
+                {% endif %}
+
+                <div class="table-card">
+                    <form method="POST" action="/panel/limites/guardar">
+                        <div class="table-responsive">
+                            <table class="matriz-limites" style="min-width: 1000px;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 200px; text-align: left;">Puesto / Categoría</th>
+                                        {% for cat in categorias %}
+                                        <th>{{ cat }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for puesto in orden_puestos %}
+                                    <tr>
+                                        <td style="background: #f8fafc; font-weight: bold; color: var(--text-main);">
+                                            {{ puesto }}
+                                        </td>
+                                        {% for cat in categorias %}
+                                        {% set limite_val = limites.get(puesto, {}).get(cat, 0.0) %}
+                                        <td>
+                                            <div style="display: flex; align-items: center; gap: 5px;">
+                                                <span style="font-size: 0.8rem; color: #64748b;">L</span>
+                                                <input type="number" step="0.01" 
+                                                       name="limite|{{ puesto }}|{{ cat }}" 
+                                                       value="{{ limite_val }}">
+                                            </div>
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div style="padding: 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: right;">
+                            <button type="submit" class="btn-action" style="background: var(--verde-cenosa); color: white; padding: 12px 30px; font-size: 1rem;">
+                                <i class="fas fa-save"></i> Guardar Matriz de Límites
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
