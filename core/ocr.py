@@ -87,7 +87,7 @@ def analizar(ruta_archivo):
         "texto_ocr": texto
     }
 
-# --- LECTURA DE ODÓMETRO VERSIÓN 4.0 (ADAPTATIVA) ---
+# --- LECTURA DE ODÓMETRO VERSIÓN 5.0 (DETECCIÓN DE CONTORNOS) ---
 def leer_odometro(ruta_imagen):
     try:
         # 1. Leer imagen
@@ -97,32 +97,54 @@ def leer_odometro(ruta_imagen):
 
         # 2. Convertir a escala de grises
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # 3. Umbralizar para aislar las zonas brillantes (los LEDs encendidos)
+        # Usamos 150 como corte para ignorar el fondo oscuro del tablero
+        _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
 
-        # 3. Ampliar la imagen (x4)
-        gray = cv2.resize(gray, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
+        # 4. Dilatar horizontalmente para unir los números separados y que formen un solo bloque
+        kernel = np.ones((5, 25), np.uint8) # Kernel ancho para unir dígitos
+        dilated = cv2.dilate(thresh, kernel, iterations=1)
 
-        # 4. Filtro para quitar el ruido de la pantalla (desenfoque medio)
-        gray = cv2.medianBlur(gray, 5)
+        # 5. Encontrar los contornos (los bloques blancos)
+        contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # 5. UMBRALIZACIÓN ADAPTATIVA (La magia)
-        # En lugar de un valor fijo, calcula el brillo por bloques de la imagen
-        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-                                       cv2.THRESH_BINARY_INV, 21, 5)
+        if not contours:
+            return {"valor": None, "texto": "No se encontraron zonas brillantes"}
 
-        # 6. Rellenar huecos (Morfología)
-        kernel = np.ones((3, 3), np.uint8)
-        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        # 6. Buscar el contorno más grande (que deberían ser los números del odómetro)
+        mejor_contorno = max(contours, key=cv2.contourArea)
+        x, y, w, h = cv2.boundingRect(mejor_contorno)
 
-        # 7. Agregar borde blanco gigante para que Tesseract se centre en el texto
-        thresh = cv2.copyMakeBorder(thresh, 50, 50, 50, 50, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+        # Si el bloque es muy pequeño, probablemente sea ruido
+        if w < 30 or h < 10:
+            return {"valor": None, "texto": "Bloque de texto muy pequeño"}
 
-        # 8. Configurar Tesseract
+        # 7. Recortar la imagen original usando ese contorno (con un pequeño margen)
+        margen = 10
+        x1 = max(0, x - margen)
+        y1 = max(0, y - margen)
+        x2 = min(gray.shape[1], x + w + margen)
+        y2 = min(gray.shape[0], y + h + margen)
+        recorte = gray[y1:y2, x1:x2]
+
+        # 8. Procesar el recorte para que Tesseract lo lea perfecto
+        # Ampliar x6 (los números serán gigantes)
+        recorte = cv2.resize(recorte, None, fx=6, fy=6, interpolation=cv2.INTER_CUBIC)
+        
+        # Aplicar umbralización Otsu al recorte (fondo blanco, números negros)
+        _, thresh_final = cv2.threshold(recorte, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+        # Agregar un borde blanco grueso para que Tesseract no se confunda
+        thresh_final = cv2.copyMakeBorder(thresh_final, 40, 40, 40, 40, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+
+        # 9. Configurar Tesseract
         config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789'
-        texto_extraido = pytesseract.image_to_string(thresh, config=config)
+        texto_extraido = pytesseract.image_to_string(thresh_final, config=config)
 
-        # 9. Limpiar y buscar el número
+        # 10. Limpiar y buscar el número
         texto_limpio = texto_extraido.strip().replace(" ", "")
-        numeros = re.findall(r'\d{4,8}', texto_limpio)
+        numeros = re.findall(r'\d{3,8}', texto_limpio)
 
         if numeros:
             valor_final = max(numeros, key=len)
