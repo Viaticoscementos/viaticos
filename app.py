@@ -71,11 +71,13 @@ def cargar_presupuestos_al_iniciar():
 def _es_admin(request: Request) -> bool:
     return bool(request.session.get("admin")) and request.session.get("rol") == "admin"
 
-# ------------------------------------------------------------------ Portal
-@app.get("/", response_class=HTMLResponse)
+# --- RUTA PARA EVITAR EL ERROR 405 DE RENDER ---
 @app.head("/")
 def health_check():
     return {"status": "ok"}
+
+# ------------------------------------------------------------------ Portal
+@app.get("/", response_class=HTMLResponse)
 def portal(request: Request, token: str = ""):
     if PORTAL_TOKEN and token != PORTAL_TOKEN:
         return HTMLResponse("<h3>Enlace invalido.</h3>", status_code=403)
@@ -86,15 +88,14 @@ def portal(request: Request, token: str = ""):
         "orden_puestos": ORDEN_PUESTOS
     })
 
-# --- RUTA API VALIDAR (CON SOPORTE PARA FOTOS DE KM INICIAL Y FINAL) ---
 @app.post("/api/validar")
 async def api_validar(
     request: Request, 
     archivos: List[UploadFile] = File(...), 
     km_inicial: str = Form(""), 
     km_final: str = Form(""),
-    foto_km_inicial: UploadFile = File(None), # <-- Foto inicial opcional
-    foto_km_final: UploadFile = File(None),   # <-- Foto final opcional
+    foto_km_inicial: UploadFile = File(None),
+    foto_km_final: UploadFile = File(None),
     empleado: str = Form(...),
     departamento: str = Form(""), 
     zona: str = Form("tierra_firme"),
@@ -106,7 +107,6 @@ async def api_validar(
     primer_archivo_path = None
     info_km = ""
 
-    # 1. Guardar archivos de factura
     for archivo in archivos:
         ext = Path(archivo.filename or "factura").suffix.lower() or ".png"
         nombre = f"{secrets.token_hex(6)}{ext}"
@@ -118,7 +118,6 @@ async def api_validar(
         if not primer_archivo_path:
             primer_archivo_path = str(destino)
 
-    # 2. Guardar fotos de odómetro si existen
     if foto_km_inicial and foto_km_inicial.filename:
         ext_ini = Path(foto_km_inicial.filename).suffix.lower() or ".png"
         nombre_ini = f"odo_ini_{secrets.token_hex(6)}{ext_ini}"
@@ -133,7 +132,6 @@ async def api_validar(
         with open(destino_fin, "wb") as f: shutil.copyfileobj(foto_km_final.file, f)
         nombres_guardados.append(nombre_fin)
 
-    # 3. Procesar kilometraje si es combustible
     if categoria == 'Combustible':
         try:
             ki = float(km_inicial) if km_inicial else 0.0
@@ -146,7 +144,6 @@ async def api_validar(
         except ValueError:
             info_km = " [Error al leer los kilometrajes]"
 
-    # 4. Hacemos el OCR sobre la factura
     datos = {"rtn": "", "cai": "", "fecha_compra": "", "monto": 0.0, "texto_ocr": ""}
     if primer_archivo_path:
         try:
@@ -157,7 +154,6 @@ async def api_validar(
         except Exception as e: 
             datos["texto_ocr"] = f"[OCR no disponible: {e}]"
 
-    # 5. Validar con reglas de negocio
     emp_info = next((e for e in db.listar_empleados() if e["nombre"].lower() == empleado.lower()), None)
     puesto = emp_info.get("puesto", "Ejecutivo de Ventas") if emp_info else "Ejecutivo de Ventas"
     if not puesto or puesto not in ORDEN_PUESTOS: puesto = ORDEN_PUESTOS[-1]
@@ -169,7 +165,6 @@ async def api_validar(
     datos.update({"empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria, "limite_manual": limite_categoria})
     veredicto = validacion.validar(datos, datos.get("texto_ocr", ""))
 
-    # 6. Guardar en BD
     db.asegurar_empleado(empleado, departamento)
     archivos_str = ",".join(nombres_guardados)
     
