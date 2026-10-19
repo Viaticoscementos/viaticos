@@ -19,18 +19,20 @@ from core.config import (BASE_DIR, FACTURAS_DIR, REPORTES_DIR, ZONAS,
 CATEGORIAS = ["Alimentacion", "Hotel", "Asistencia Tecnica", "Representacion",
               "Mercadeo", "Combustible", "Depreciacion", "Otros Gastos"]
 
-# LISTA OFICIAL DE CENTROS DE COSTO (Edita esto a tu gusto)
-CENTROS_COSTOS = [
-    "Ventas V60140",
-    "Administración",
-    "Planta / Producción",
-    "Logística / Bodega",
-    "Recursos Humanos",
-    "Contabilidad / Finanzas",
-    "Gerencia General",
-    "Mercadeo",
-    "Sistemas / TI"
-]
+# Función para obtener los centros de costo desde la base de datos (o los por defecto)
+def get_centros_costos():
+    c_str = db.obtener_config("centros_costos", "")
+    if c_str:
+        try:
+            return json.loads(c_str)
+        except Exception:
+            pass
+    # Lista por defecto si la base de datos está vacía
+    return [
+        "Ventas V60140", "Administración", "Planta / Producción",
+        "Logística / Bodega", "Recursos Humanos", "Contabilidad / Finanzas",
+        "Gerencia General", "Mercadeo", "Sistemas / TI"
+    ]
 
 ORDEN_PUESTOS = ["Gerente General", "Jefe", "Ingeniero Senior",
                  "Ingeniero Junior", "Ejecutivo de Ventas Senior",
@@ -65,7 +67,7 @@ def portal(request: Request, token: str = ""):
     if PORTAL_TOKEN and token != PORTAL_TOKEN:
         return HTMLResponse("<h3>Enlace invalido. Solicite el enlace correcto.</h3>", status_code=403)
     return templates.TemplateResponse(request, "portal.html", {
-        "categorias": CATEGORIAS, "zonas": ZONAS, "centros_costos": CENTROS_COSTOS,
+        "categorias": CATEGORIAS, "zonas": ZONAS, "centros_costos": get_centros_costos(),
         "empresa": NOMBRE_EMPRESA_DEFAULT, "token": token,
         "empleados": [e["nombre"] for e in db.listar_empleados()],
     })
@@ -118,7 +120,7 @@ def depreciacion_portal(request: Request, token: str = ""):
     p = depreciacion.obtener_parametros()
     return templates.TemplateResponse(request, "depreciacion.html", {
         "zonas": ZONAS, "empresa": NOMBRE_EMPRESA_DEFAULT, "token": token,
-        "centros_costos": CENTROS_COSTOS,
+        "centros_costos": get_centros_costos(),
         "empleados": [e["nombre"] for e in db.listar_empleados()],
         "factor": p["factor_lps_km"], "milla_km": depreciacion.MILLA_A_KM,
     })
@@ -278,7 +280,7 @@ def empleados_form(request: Request, msg: str = ""):
     return templates.TemplateResponse(request, "empleados.html", {
         "empleados": empleados_ordenados(), "orden_puestos": ORDEN_PUESTOS, "limites": dict_limites,
         "zonas": ZONAS, "cfg": cfg, "dep": dep, "msg": msg, "rol": "admin", "usuario": request.session.get("admin"),
-        "centros_costos": CENTROS_COSTOS # <-- Se lo pasamos a la vista
+        "centros_costos": get_centros_costos()
     })
 
 @app.post("/panel/empleados/agregar")
@@ -323,6 +325,25 @@ def guardar_config(request: Request, rtn_empresa: str = Form(""), nombre_empresa
     if rtn_empresa.strip(): db.guardar_config("rtn_empresa", rtn_empresa.strip())
     if nombre_empresa.strip(): db.guardar_config("nombre_empresa", nombre_empresa.strip())
     depreciacion.guardar_parametros(factor_lps_km or depreciacion.obtener_parametros()["factor_lps_km"], factor_conversion or depreciacion.obtener_parametros()["factor_conversion"], bool(restar_deducciones))
+    return RedirectResponse("/panel/empleados?msg=cfg", status_code=303)
+
+# --- RUTAS PARA AGREGAR/ELIMINAR CENTROS DE COSTO ---
+@app.post("/panel/config/centros/agregar")
+def agregar_centro(request: Request, centro: str = Form(...)):
+    if not _es_admin(request): return RedirectResponse("/login", status_code=303)
+    centros = get_centros_costos()
+    if centro.strip() and centro.strip() not in centros:
+        centros.append(centro.strip())
+        db.guardar_config("centros_costos", json.dumps(centros))
+    return RedirectResponse("/panel/empleados?msg=cfg", status_code=303)
+
+@app.get("/panel/config/centros/eliminar/{centro}")
+def eliminar_centro(request: Request, centro: str):
+    if not _es_admin(request): return RedirectResponse("/login", status_code=303)
+    centros = get_centros_costos()
+    if centro in centros:
+        centros.remove(centro)
+        db.guardar_config("centros_costos", json.dumps(centros))
     return RedirectResponse("/panel/empleados?msg=cfg", status_code=303)
 
 @app.get("/panel/presupuestos", response_class=HTMLResponse)
