@@ -14,20 +14,26 @@
         <!-- MENÚ LATERAL -->
         <aside class="sidebar">
             <div class="sidebar-brand">
-                <img src="/static/logo_color.png" alt="Logo" style="height: 40px; margin-bottom: 10px;">
-                <h2>Viáticos</h2>
+                <img src="/static/logo_color.png" alt="Logo" style="height: 45px; margin-bottom: 10px;">
+                <h2>Sistema Viáticos</h2>
             </div>
+            
             <nav class="sidebar-menu">
+                <p class="menu-label">Principal</p>
                 <a href="/panel" class="active"><i class="fas fa-home"></i> Inicio</a>
+                <a href="#"><i class="fas fa-file-invoice-dollar"></i> Facturas</a>
                 
                 {% if rol == 'admin' %}
-                <a href="#"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
+                <p class="menu-label" style="margin-top: 20px;">Administración</p>
                 <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados</a>
+                <a href="/panel/presupuestos"><i class="fas fa-money-check-alt"></i> Presupuestos 2026</a>
                 <a href="#"><i class="fas fa-chart-pie"></i> Reportes</a>
                 {% else %}
+                <p class="menu-label" style="margin-top: 20px;">Acciones</p>
                 <a href="/?token={{ token }}"><i class="fas fa-upload"></i> Subir Factura</a>
                 {% endif %}
             </nav>
+            
             <div class="sidebar-footer">
                 <a href="/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
             </div>
@@ -35,121 +41,163 @@
 
         <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
-            <!-- Barra Superior -->
             <header class="top-navbar">
                 <div class="search-bar">
                     <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Buscar...">
+                    <input type="text" placeholder="Buscar factura, empleado...">
                 </div>
                 <div class="user-info">
-                    <span>Hola, <strong>{{ usuario }}</strong> {% if rol == 'admin' %}(Admin){% else %}(Empleado){% endif %}</span>
-                    <div class="avatar"><i class="fas fa-user-tie"></i></div>
+                    <div class="notification"><i class="fas fa-bell"></i></div>
+                    <div class="user-profile">
+                        <div class="text">
+                            <span class="name">{{ usuario }}</span>
+                            <span class="role">{% if rol == 'admin' %}Administrador{% else %}Empleado{% endif %}</span>
+                        </div>
+                        <div class="avatar"><i class="fas fa-user-tie"></i></div>
+                    </div>
                 </div>
             </header>
 
-            <!-- VISTA PARA ADMINISTRADORES (Gráficos y Tarjetas) -->
-            {% if rol == 'admin' %}
-            <div class="dashboard-grid">
-                <div class="kpi-card">
-                    <div class="kpi-icon green"><i class="fas fa-check-circle"></i></div>
-                    <div class="kpi-data"><h3>Aprobadas</h3><p>{{ conteos.cumplen }}</p></div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-icon orange"><i class="fas fa-clock"></i></div>
-                    <div class="kpi-data"><h3>Pendientes</h3><p>{{ conteos.revisar }}</p></div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-icon red"><i class="fas fa-times-circle"></i></div>
-                    <div class="kpi-data"><h3>Rechazadas</h3><p>{{ conteos.nocumplen }}</p></div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-icon blue"><i class="fas fa-wallet"></i></div>
-                    <div class="kpi-data"><h3>Total Viáticos</h3><p>$0.00</p></div>
+            <div class="content-wrapper">
+                {% if rol == 'admin' %}
+                <div class="dashboard-header">
+                    <h2>Resumen General</h2>
+                    <p>Bienvenido de nuevo, aquí está el estatus de los viáticos.</p>
                 </div>
 
-                <div class="chart-card">
-                    <h3>Gastos por Mes</h3>
-                    <canvas id="graficoBarras"></canvas>
-                </div>
-                <div class="chart-card">
-                    <h3>Estatus de Facturas</h3>
-                    <canvas id="graficoDona"></canvas>
-                </div>
-            </div>
-            {% else %}
-            <!-- VISTA PARA EMPLEADOS (Boton para subir factura) -->
-            <div style="padding: 30px 30px 0;">
-                <div class="kpi-card" style="background: #e8f5e9; border: 1px solid #c8e6c9;">
-                    <div class="kpi-icon green"><i class="fas fa-file-upload"></i></div>
-                    <div class="kpi-data">
-                        <h3>¿Tienes una nueva factura?</h3>
-                        <p style="font-size: 1rem; font-weight: normal; margin-top: 5px;">
-                            Sube tu comprobante para que sea revisado por administración.
-                        </p>
-                        <a href="/?token={{ token }}" class="btn" style="margin-top: 15px; display: inline-block; background: var(--cenosa-verde); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none;">
-                            Subir Factura Ahora
-                        </a>
+                <div class="dashboard-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon green"><i class="fas fa-check-double"></i></div>
+                        <div class="kpi-data">
+                            <h3>Aprobadas</h3>
+                            <div class="kpi-number">{{ conteos.cumplen }}</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon orange"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="kpi-data">
+                            <h3>Pendientes</h3>
+                            <div class="kpi-number">{{ conteos.pendientes }}</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon red"><i class="fas fa-times-circle"></i></div>
+                        <div class="kpi-data">
+                            <h3>Rechazadas</h3>
+                            <div class="kpi-number">{{ conteos.nocumplen }}</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card" style="background: linear-gradient(135deg, #008f39 0%, #006e2c 100%); color: white;">
+                        <div class="kpi-icon" style="background: rgba(255,255,255,0.2); color: white;"><i class="fas fa-wallet"></i></div>
+                        <div class="kpi-data">
+                            <h3 style="color: rgba(255,255,255,0.8);">Total Reembolsado</h3>
+                            <div class="kpi-number" style="color: white;">$0.00</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            {% endif %}
 
-            <!-- TABLA DE FACTURAS (Para ambos roles) -->
-            <div class="table-section">
-                <div class="table-header">
-                    <h3>{% if rol == 'admin' %}Últimas Facturas Recibidas{% else %}Mis Facturas Recientes{% endif %}</h3>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header"><h3>Gastos por Mes</h3></div>
+                        <canvas id="graficoBarras"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header"><h3>Estatus de Facturas</h3></div>
+                        <div style="height: 250px; display: flex; justify-content: center;"><canvas id="graficoDona"></canvas></div>
+                    </div>
+                </div>
+
+                {% else %}
+                <!-- VISTA PARA EMPLEADOS (Muestra su presupuesto asignado) -->
+                <div class="dashboard-header">
+                    <h2>Hola, {{ usuario }}</h2>
+                    <p>Este es el resumen de tus solicitudes de viáticos.</p>
                 </div>
                 
-                <div class="tabs modern-tabs">
-                    <a href="/panel?tab=cumplen" class="{% if tab == 'cumplen' %}act{% endif %}">Cumplen ({{ conteos.cumplen }})</a>
-                    <a href="/panel?tab=nocumplen" class="{% if tab == 'nocumplen' %}act{% endif %}">No cumplen ({{ conteos.nocumplen }})</a>
-                    <a href="/panel?tab=pendientes" class="{% if tab == 'pendientes' %}act{% endif %}">Pendientes ({{ conteos.pendientes }})</a>
-                    <a href="/panel?tab=historial" class="{% if tab == 'historial' %}act{% endif %}">Historial ({{ conteos.historial }})</a>
+                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                    <div class="kpi-card" style="background: white; border-left: 6px solid var(--cenosa-verde);">
+                        <div class="kpi-icon green"><i class="fas fa-money-bill-wave"></i></div>
+                        <div class="kpi-data">
+                            <h3>Mi Presupuesto Asignado 2026</h3>
+                            <div class="kpi-number" style="color: var(--cenosa-verde);">${{ "{:,.2f}".format(presupuesto) }}</div>
+                            <span class="kpi-trend">Fondo Rotativo</span>
+                        </div>
+                    </div>
+                    
+                    <div class="kpi-card" style="background: #e8f5e9; border: none;">
+                        <div class="kpi-icon green"><i class="fas fa-file-upload"></i></div>
+                        <div class="kpi-data">
+                            <h3 style="color: #006e2c;">¿Nueva factura?</h3>
+                            <p style="margin: 5px 0 10px; color: #475569; font-size: 0.85rem;">Sube tu comprobante para revisión.</p>
+                            <a href="/?token={{ token }}" class="btn" style="background: var(--cenosa-verde); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.9rem;">
+                                Subir Factura
+                            </a>
+                        </div>
+                    </div>
                 </div>
+                {% endif %}
 
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Empleado</th>
-                                <th>Fecha</th>
-                                <th>Monto</th>
-                                <th>Estatus</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% set lista_actual = cumplen if tab == 'cumplen' else (nocumplen if tab == 'nocumplen' else (pendientes if tab == 'pendientes' else historial)) %}
-                            
-                            {% for factura in lista_actual %}
-                            <tr>
-                                <td>{{ factura.empleado }}</td>
-                                <td>{{ factura.fecha_compra or 'Reciente' }}</td>
-                                <td>${{ factura.monto }}</td>
-                                <td><span class="pill {{ factura.estado }}">{{ factura.estado }}</span></td>
-                                <td>
-                                    {% if rol == 'admin' %}
-                                    <a href="/panel/factura/{{ factura.id }}" target="_blank" class="btn sm">Ver</a>
-                                    {% else %}
-                                    <span class="small">En revisión</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="5" style="text-align: center; padding: 30px; color: #64748b;">
-                                    No hay registros en esta pestaña.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <!-- TABLA DE FACTURAS -->
+                <div class="table-card">
+                    <div class="table-header">
+                        <h3>{% if rol == 'admin' %}Últimas Solicitudes{% else %}Mis Solicitudes{% endif %}</h3>
+                        <div class="tabs modern-tabs">
+                            <a href="/panel?tab=cumplen" class="{% if tab == 'cumplen' %}act{% endif %}">Cumplen ({{ conteos.cumplen }})</a>
+                            <a href="/panel?tab=nocumplen" class="{% if tab == 'nocumplen' %}act{% endif %}">No cumplen ({{ conteos.nocumplen }})</a>
+                            <a href="/panel?tab=pendientes" class="{% if tab == 'pendientes' %}act{% endif %}">Pendientes ({{ conteos.pendientes }})</a>
+                            <a href="/panel?tab=historial" class="{% if tab == 'historial' %}act{% endif %}">Historial ({{ conteos.historial }})</a>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Empleado</th>
+                                    <th>Fecha</th>
+                                    <th>Monto</th>
+                                    <th>Estatus</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set lista_actual = cumplen if tab == 'cumplen' else (nocumplen if tab == 'nocumplen' else (pendientes if tab == 'pendientes' else historial)) %}
+                                
+                                {% for factura in lista_actual %}
+                                <tr>
+                                    <td>
+                                        <div class="user-cell">
+                                            <div class="avatar-sm"><i class="fas fa-user"></i></div>
+                                            {{ factura.empleado }}
+                                        </div>
+                                    </td>
+                                    <td>{{ factura.fecha_compra or 'Reciente' }}</td>
+                                    <td class="amount">${{ factura.monto }}</td>
+                                    <td><span class="pill {{ factura.estado }}">{{ factura.estado }}</span></td>
+                                    <td>
+                                        {% if rol == 'admin' %}
+                                        <a href="/panel/factura/{{ factura.id }}" target="_blank" class="btn-action"><i class="fas fa-eye"></i> Ver</a>
+                                        {% else %}
+                                        <span class="text-muted">En revisión</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="empty-state">
+                                        <i class="fas fa-inbox"></i>
+                                        <p>No hay registros en esta pestaña.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Gráficos solo para admin -->
     {% if rol == 'admin' %}
     <script>
         const ctxBarras = document.getElementById('graficoBarras').getContext('2d');
@@ -157,9 +205,9 @@
             type: 'bar',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
-                datasets: [{ label: 'Gastos ($)', data: [1200, 1900, 3000, 5000, 2000, 3000], backgroundColor: '#008f39', borderRadius: 6 }]
+                datasets: [{ label: 'Gastos ($)', data: [1200, 1900, 3000, 5000, 2000, 3000], backgroundColor: '#008f39', borderRadius: 6, barThickness: 25 }]
             },
-            options: { responsive: true, plugins: { legend: { display: false } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [5, 5] } }, x: { grid: { display: false } } } }
         });
 
         const ctxDona = document.getElementById('graficoDona').getContext('2d');
@@ -167,9 +215,9 @@
             type: 'doughnut',
             data: {
                 labels: ['Aprobadas', 'Pendientes', 'Rechazadas'],
-                datasets: [{ data: [{{ conteos.cumplen|default(0) }}, {{ conteos.revisar|default(0) }}, {{ conteos.nocumplen|default(0) }}], backgroundColor: ['#008f39', '#f59e0b', '#ef4444'], borderWidth: 0 }]
+                datasets: [{ data: [{{ conteos.cumplen|default(0) }}, {{ conteos.revisar|default(0) }}, {{ conteos.nocumplen|default(0) }}], backgroundColor: ['#008f39', '#f59e0b', '#ef4444'], borderWidth: 0, hoverOffset: 4 }]
             },
-            options: { responsive: true, cutout: '70%' }
+            options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8 } } } }
         });
     </script>
     {% endif %}
