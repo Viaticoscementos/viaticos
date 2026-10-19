@@ -11,8 +11,8 @@
 <body class="dashboard-body">
 
     <div class="dashboard-container">
+        <!-- SIDEBAR LIMPIO -->
         <aside class="sidebar">
-            <a href="/panel/limites"><i class="fas fa-sliders-h"></i> Límites por Puesto</a>
             <div class="sidebar-brand">
                 <img src="/static/logo_color.png" alt="Logo" style="height: 45px;">
                 <h2>Sistema Viáticos</h2>
@@ -30,10 +30,10 @@
                 
                 {% if rol == 'admin' %}
                 <p class="menu-label" style="margin-top: 15px;">Administración</p>
-                <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados</a>
+                <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados y Config</a>
                 <a href="/panel/presupuestos"><i class="fas fa-money-check-alt"></i> Presupuestos 2026</a>
                 <a href="/panel/limites"><i class="fas fa-sliders-h"></i> Límites por Puesto</a>
-                <a href="#"><i class="fas fa-chart-pie"></i> Reportes</a>
+                <a href="/panel/reportes"><i class="fas fa-chart-pie"></i> Reportes</a>
                 {% endif %}
             </nav>
             
@@ -42,13 +42,15 @@
             </div>
         </aside>
 
+        <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
             <header class="top-navbar">
                 <div class="search-bar">
                     <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Buscar...">
+                    <input type="text" placeholder="Buscar factura, empleado...">
                 </div>
                 <div class="user-info">
+                    <div class="notification"><i class="fas fa-bell"></i></div>
                     <div class="user-profile">
                         <div class="text">
                             <span class="name">{{ usuario }}</span>
@@ -61,12 +63,12 @@
 
             <div class="content-wrapper">
                 {% if rol == 'admin' %}
-                <!-- DASHBOARD ADMINISTRADOR (Se mantiene igual) -->
                 <div class="dashboard-header">
                     <h2>Overview de Viáticos</h2>
                     <p>Aquí tienes el resumen de la actividad del sistema.</p>
                 </div>
 
+                <!-- TARJETAS KPI -->
                 <div class="dashboard-grid">
                     <div class="kpi-card">
                         <div class="kpi-icon green"><i class="fas fa-check-double"></i></div>
@@ -98,6 +100,7 @@
                     </div>
                 </div>
 
+                <!-- GRÁFICOS -->
                 <div class="charts-grid">
                     <div class="chart-card">
                         <div class="chart-header"><h3>Gastos por Mes (Lempiras)</h3></div>
@@ -114,46 +117,45 @@
                 </div>
 
                 {% else %}
-                <!-- VISTA EMPLEADO: TRES OPCIONES CLARAS -->
+                <!-- VISTA PARA EMPLEADOS -->
                 <div class="dashboard-header">
                     <h2>Hola, {{ usuario }}</h2>
-                    <p>¿Qué gasto necesitas registrar hoy?</p>
+                    <p>Bienvenido a tu portal de viáticos.</p>
                 </div>
                 
-                <div class="dashboard-grid" style="grid-template-columns: repeat(3, 1fr);">
-                    <!-- Opción 1: Presupuesto -->
+                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
                     <div class="kpi-card" style="border-left: 6px solid var(--verde-cenosa);">
                         <div class="kpi-icon green"><i class="fas fa-money-bill-wave"></i></div>
                         <div class="kpi-data">
-                            <h3>Mi Presupuesto 2026</h3>
+                            <h3>Mi Presupuesto Asignado 2026</h3>
                             <div class="kpi-number" style="color: var(--verde-cenosa);">L {{ "{:,.2f}".format(presupuesto) }}</div>
+                            <span class="role">Fondo Rotativo</span>
                         </div>
                     </div>
-
-                    <!-- Opción 2: Subir Factura Normal o Gasolina -->
-                    <div class="kpi-card" style="background: var(--verde-fondo); border: none; cursor: pointer;" onclick="window.location.href='/?token={{ token }}'">
+                    
+                    <div class="kpi-card" style="background: var(--verde-fondo); border: none;">
                         <div class="kpi-icon green"><i class="fas fa-file-upload"></i></div>
                         <div class="kpi-data">
-                            <h3 style="color: var(--verde-cenosa);">Subir Factura / Gasolina</h3>
-                            <p style="margin: 5px 0 0; color: var(--text-main); font-size: 0.85rem;">Adjunta tu recibo y el sistema lo procesará.</p>
-                        </div>
-                    </div>
-
-                    <!-- Opción 3: Depreciación de Vehículo -->
-                    <div class="kpi-card" style="background: #f0fdf4; border: 1px solid #bbf7d0; cursor: pointer;" onclick="window.location.href='/depreciacion?token={{ token }}'">
-                        <div class="kpi-icon" style="background: #dcfce7; color: #16a34a;"><i class="fas fa-car"></i></div>
-                        <div class="kpi-data">
-                            <h3 style="color: #166534;">Depreciación de Vehículo</h3>
-                            <p style="margin: 5px 0 0; color: var(--text-main); font-size: 0.85rem;">Registra los km recorridos de tu ruta.</p>
+                            <h3 style="color: var(--verde-cenosa);">¿Nueva factura?</h3>
+                            <p style="margin: 5px 0 10px; color: var(--text-main); font-size: 0.85rem;">Sube tu comprobante para revisión.</p>
+                            <a href="/?token={{ token }}" class="btn-action" style="background: var(--verde-cenosa); color: white;">
+                                Subir Factura
+                            </a>
                         </div>
                     </div>
                 </div>
                 {% endif %}
 
-                <!-- TABLA DE FACTURAS RECIENTES (Para ambos) -->
-                <div class="table-card" style="margin-top: 20px;">
+                <!-- TABLA DE FACTURAS -->
+                <div class="table-card">
                     <div class="table-header">
-                        <h3>{% if rol == 'admin' %}Últimas Solicitudes{% else %}Mis Solicitudes Recientes{% endif %}</h3>
+                        <h3>{% if rol == 'admin' %}Últimas Solicitudes{% else %}Mis Solicitudes{% endif %}</h3>
+                        <div class="tabs modern-tabs">
+                            <a href="/panel?tab=cumplen" class="{% if tab == 'cumplen' %}act{% endif %}">Cumplen ({{ conteos.cumplen }})</a>
+                            <a href="/panel?tab=nocumplen" class="{% if tab == 'nocumplen' %}act{% endif %}">No cumplen ({{ conteos.nocumplen }})</a>
+                            <a href="/panel?tab=pendientes" class="{% if tab == 'pendientes' %}act{% endif %}">Pendientes ({{ conteos.pendientes }})</a>
+                            <a href="/panel?tab=historial" class="{% if tab == 'historial' %}act{% endif %}">Historial ({{ conteos.historial }})</a>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -164,11 +166,13 @@
                                     <th>Fecha</th>
                                     <th>Monto</th>
                                     <th>Estatus</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% set lista_actual = cumplen if tab == 'cumplen' else (nocumplen if tab == 'nocumplen' else (pendientes if tab == 'pendientes' else historial)) %}
-                                {% for factura in lista_actual[:5] %}
+                                
+                                {% for factura in lista_actual %}
                                 <tr>
                                     <td>
                                         <div class="user-cell">
@@ -179,12 +183,19 @@
                                     <td>{{ factura.fecha_compra or 'Reciente' }}</td>
                                     <td class="amount">L {{ factura.monto }}</td>
                                     <td><span class="pill {{ factura.estado }}">{{ factura.estado }}</span></td>
+                                    <td>
+                                        {% if rol == 'admin' %}
+                                        <a href="/panel/factura/{{ factura.id }}" target="_blank" class="btn-action"><i class="fas fa-eye"></i> Ver</a>
+                                        {% else %}
+                                        <span class="role">En revisión</span>
+                                        {% endif %}
+                                    </td>
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="4" class="empty-state">
+                                    <td colspan="5" class="empty-state">
                                         <i class="fas fa-inbox"></i>
-                                        <p>No hay registros recientes.</p>
+                                        <p>No hay registros en esta pestaña.</p>
                                     </td>
                                 </tr>
                                 {% endfor %}
