@@ -83,10 +83,12 @@ def portal(request: Request, token: str = ""):
         "orden_puestos": ORDEN_PUESTOS
     })
 
+# --- RUTA API VALIDAR (CON SOPORTE PARA ODÓMETRO) ---
 @app.post("/api/validar")
 async def api_validar(
     request: Request, 
     archivos: List[UploadFile] = File(...), 
+    odometro: UploadFile = File(None), # <--- AQUI RECIBIMOS LA FOTO DEL ODÓMETRO
     empleado: str = Form(...),
     departamento: str = Form(""), 
     zona: str = Form("tierra_firme"),
@@ -96,7 +98,9 @@ async def api_validar(
 ):
     nombres_guardados = []
     primer_archivo_path = None
+    info_odometro = ""
 
+    # 1. Guardar archivos de factura
     for archivo in archivos:
         ext = Path(archivo.filename or "factura").suffix.lower() or ".png"
         nombre = f"{secrets.token_hex(6)}{ext}"
@@ -108,6 +112,25 @@ async def api_validar(
         if not primer_archivo_path:
             primer_archivo_path = str(destino)
 
+    # 2. Si hay odómetro, procesarlo
+    if odometro and odometro.filename:
+        ext_odo = Path(odometro.filename).suffix.lower() or ".png"
+        nombre_odo = f"odo_{secrets.token_hex(6)}{ext_odo}"
+        destino_odo = Path(FACTURAS_DIR) / nombre_odo
+        with open(destino_odo, "wb") as f:
+            shutil.copyfileobj(odometro.file, f)
+        
+        nombres_guardados.append(nombre_odo) # Lo agregamos para que se vea en el admin
+        
+        try:
+            # Leer el odómetro con OCR
+            res_odo = ocr.leer_odometro(str(destino_odo))
+            if res_odo.get("valor"):
+                info_odometro = f" [KM: {res_odo['valor']}]"
+        except Exception as e:
+            print(f"Error leyendo odometro: {e}")
+
+    # 3. Hacemos el OCR sobre la factura (el primer archivo)
     datos = {"rtn": "", "cai": "", "fecha_compra": "", "monto": 0.0, "texto_ocr": ""}
     if primer_archivo_path:
         try:
@@ -118,6 +141,7 @@ async def api_validar(
         except Exception as e: 
             datos["texto_ocr"] = f"[OCR no disponible: {e}]"
 
+    # 4. Validar con reglas de negocio
     emp_info = next((e for e in db.listar_empleados() if e["nombre"].lower() == empleado.lower()), None)
     puesto = emp_info.get("puesto", "Ejecutivo de Ventas") if emp_info else "Ejecutivo de Ventas"
     if not puesto or puesto not in ORDEN_PUESTOS: puesto = ORDEN_PUESTOS[-1]
@@ -129,18 +153,28 @@ async def api_validar(
     datos.update({"empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria, "limite_manual": limite_categoria})
     veredicto = validacion.validar(datos, datos.get("texto_ocr", ""))
 
+    # 5. Guardar en BD
     db.asegurar_empleado(empleado, departamento)
     archivos_str = ",".join(nombres_guardados)
     
+    # Agregamos el KM a los motivos para que el admin lo vea en la tabla
+    motivos_finales = veredicto["motivos"] + info_odometro
+    if info_odometro and veredicto["cumple"]:
+        motivos_finales = f"Factura válida.{info_odometro}"
+
     reg = db.crear_solicitud({
         "empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria,
         "archivo": archivos_str, "rtn": datos.get("rtn"), "cai": datos.get("cai"),
         "fecha_compra": datos.get("fecha_compra"), "monto": veredicto["monto"],
         "monto_reembolsable": veredicto["monto_reembolsable"], "limite_aplicado": veredicto["limite_aplicado"],
-        "cumple": veredicto["cumple"], "estado": veredicto["estado"], "motivos": veredicto["motivos"],
+        "cumple": veredicto["cumple"], "estado": veredicto["estado"], "motivos": motivos_finales,
         "texto_ocr": datos.get("texto_ocr", ""),
     })
-    return JSONResponse({"estado": veredicto["estado"], "cumple": veredicto["cumple"], "motivos": veredicto["motivos"], "monto_extraido": veredicto["monto"], "folio": reg["folio"]})
+    
+    return JSONResponse({
+        "estado": veredicto["estado"], "cumple": veredicto["cumple"], "motivos": motivos_finales, 
+        "monto_extraido": veredicto["monto"], "folio": reg["folio"]
+    })
 
 # ------------------------------------------------------------------ Login
 @app.get("/login", response_class=HTMLResponse)
@@ -249,6 +283,7 @@ def ver_factura(request: Request, sid: int):
     s = db.obtener_solicitud(sid)
     if not s or not s.get("archivo"): raise HTTPException(404)
     
+    # Si hay múltiples archivos, abrimos el primero
     primer_archivo = s["archivo"].split(",")[0]
     ruta = Path(FACTURAS_DIR) / primer_archivo
     if not ruta.exists(): raise HTTPException(404)
@@ -276,7 +311,7 @@ def memo_empleado(request: Request, empleado: str):
 def tabla(request: Request, estado: str = ""):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     sols = db.listar_solicitudes(estado=estado or None)
-    ruta = reportes.generar_tabla(sols) # Esta sigue siendo Excel
+    ruta = reportes.generar_tabla(sols)
     return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 # ---------------------------------------
 
