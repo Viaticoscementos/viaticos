@@ -57,6 +57,7 @@ seed.sembrar()  # carga los empleados base solo si la tabla esta vacia
 
 
 def _es_admin(request: Request) -> bool:
+    # Verifica que esté logueado y que su rol sea administrador
     return bool(request.session.get("admin")) and request.session.get("rol") == "admin"
 
 
@@ -230,9 +231,7 @@ def login(request: Request, usuario: str = Form(...), password: str = Form(...))
         request.session["rol"] = "admin"
         return RedirectResponse("/panel", status_code=303)
     
-    # 2. Verificar si es un Empleado (buscamos en la lista)
-    # NOTA: Para este ejemplo, la contraseña del empleado es su mismo nombre.
-    # Puedes pedirle a los empleados que escriban su nombre completo en ambos campos.
+    # 2. Verificar si es un Empleado 
     empleados = [e["nombre"].lower() for e in db.listar_empleados()]
     if usuario.lower() in empleados:
         request.session["admin"] = usuario
@@ -410,7 +409,6 @@ def empleados_editar(request: Request, emp_id: int = Form(...),
                                deprecia_vehiculo=bool(deprecia),
                                fondo_rotativo=fondo_rotativo)
     if r.get("ok"):
-        # si cambio el nombre, mover el limite al nombre nuevo
         viejo = r.get("nombre_anterior")
         nuevo = r.get("nombre_nuevo")
         if viejo and nuevo and viejo.lower() != nuevo.lower():
@@ -441,6 +439,41 @@ def guardar_config(request: Request, rtn_empresa: str = Form(""),
                                     factor_conversion or depreciacion.obtener_parametros()["factor_conversion"],
                                     bool(restar_deducciones))
     return RedirectResponse("/panel/empleados?msg=cfg", status_code=303)
+
+
+# ------------------------------------------------------------------ Presupuestos 2026
+@app.get("/panel/presupuestos", response_class=HTMLResponse)
+def presupuestos_form(request: Request, msg: str = ""):
+    if not _es_admin(request):
+        return RedirectResponse("/login", status_code=303)
+    
+    emps = empleados_ordenados()
+    for e in emps:
+        e["limite_actual"] = db.obtener_limite("empleado", e["nombre"]) or 0.0
+        
+    return templates.TemplateResponse(request, "presupuestos.html", {
+        "empleados": emps, 
+        "msg": msg, 
+        "empresa": NOMBRE_EMPRESA_DEFAULT,
+        "rol": "admin"
+    })
+
+@app.post("/panel/presupuestos/guardar")
+async def presupuestos_guardar(request: Request):
+    if not _es_admin(request):
+        return RedirectResponse("/login", status_code=303)
+    
+    form_data = await request.form()
+    for key, value in form_data.items():
+        if key.startswith("limite_"):
+            emp_nombre = key.replace("limite_", "")
+            try:
+                nuevo_limite = float(value) if value.strip() else 0.0
+                db.guardar_limite("empleado", emp_nombre, nuevo_limite)
+            except ValueError:
+                pass
+                
+    return RedirectResponse("/panel/presupuestos?msg=ok", status_code=303)
 
 
 @app.get("/salud")
