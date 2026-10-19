@@ -57,7 +57,7 @@ seed.sembrar()  # carga los empleados base solo si la tabla esta vacia
 
 
 def _es_admin(request: Request) -> bool:
-    return bool(request.session.get("admin"))
+    return bool(request.session.get("admin")) and request.session.get("rol") == "admin"
 
 
 def requiere_admin(request: Request):
@@ -223,10 +223,22 @@ def login_form(request: Request, error: str = ""):
 
 @app.post("/login")
 def login(request: Request, usuario: str = Form(...), password: str = Form(...)):
+    # 1. Verificar si es el Administrador
     if secrets.compare_digest(usuario, ADMIN_USUARIO) and \
        secrets.compare_digest(password, ADMIN_PASSWORD):
         request.session["admin"] = usuario
+        request.session["rol"] = "admin"
         return RedirectResponse("/panel", status_code=303)
+    
+    # 2. Verificar si es un Empleado (buscamos en la lista)
+    # NOTA: Para este ejemplo, la contraseña del empleado es su mismo nombre.
+    # Puedes pedirle a los empleados que escriban su nombre completo en ambos campos.
+    empleados = [e["nombre"].lower() for e in db.listar_empleados()]
+    if usuario.lower() in empleados:
+        request.session["admin"] = usuario
+        request.session["rol"] = "empleado"
+        return RedirectResponse("/panel", status_code=303)
+
     return RedirectResponse("/login?error=1", status_code=303)
 
 
@@ -239,22 +251,39 @@ def logout(request: Request):
 # ------------------------------------------------------------------ Panel
 @app.get("/panel", response_class=HTMLResponse)
 def panel(request: Request, tab: str = "cumplen"):
-    if not _es_admin(request):
+    usuario = request.session.get("admin")
+    rol = request.session.get("rol", "empleado" if usuario else None)
+
+    if not usuario:
         return RedirectResponse("/login", status_code=303)
-    cumplen = db.listar_solicitudes(estado="CUMPLE")
-    revisar = db.listar_solicitudes(estado="REVISAR")
-    nocumplen = db.listar_solicitudes(estado="NO_CUMPLE")
-    pendientes = cumplen + revisar
-    historial = (db.listar_solicitudes(estado="APROBADO") +
-                 db.listar_solicitudes(estado="RECHAZADO"))
+
+    if rol == "admin":
+        # El admin ve TODO
+        cumplen = db.listar_solicitudes(estado="CUMPLE")
+        revisar = db.listar_solicitudes(estado="REVISAR")
+        nocumplen = db.listar_solicitudes(estado="NO_CUMPLE")
+        pendientes = cumplen + revisar
+        historial = (db.listar_solicitudes(estado="APROBADO") +
+                     db.listar_solicitudes(estado="RECHAZADO"))
+    else:
+        # El empleado SOLO ve las suyas
+        todas = db.listar_solicitudes()
+        mis_sols = [s for s in todas if s.get("empleado", "").lower() == usuario.lower()]
+        cumplen = [s for s in mis_sols if s["estado"] == "CUMPLE"]
+        revisar = [s for s in mis_sols if s["estado"] == "REVISAR"]
+        nocumplen = [s for s in mis_sols if s["estado"] == "NO_CUMPLE"]
+        pendientes = [s for s in mis_sols if s["estado"] in ("CUMPLE", "REVISAR")]
+        historial = [s for s in mis_sols if s["estado"] in ("APROBADO", "RECHAZADO")]
+
     return templates.TemplateResponse(request, "panel.html", {
-        "tab": tab, "usuario": request.session.get("admin"),
+        "tab": tab, "usuario": usuario, "rol": rol,
         "cumplen": cumplen, "revisar": revisar, "nocumplen": nocumplen,
         "pendientes": pendientes, "historial": historial,
         "conteos": {"cumplen": len(cumplen), "revisar": len(revisar),
                     "nocumplen": len(nocumplen), "pendientes": len(pendientes),
                     "historial": len(historial)},
         "empresa": NOMBRE_EMPRESA_DEFAULT,
+        "token": PORTAL_TOKEN,
     })
 
 
