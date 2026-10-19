@@ -24,7 +24,7 @@
                 
                 <!-- Pestaña de Facturas / Solicitud de Reembolso -->
                 {% if rol == 'admin' %}
-                <a href="/panel"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
+                <a href="/panel/facturas"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
                 {% else %}
                 <a href="/?token={{ token }}"><i class="fas fa-file-upload"></i> Solicitud de Reembolso</a>
                 {% endif %}
