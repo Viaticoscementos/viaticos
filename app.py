@@ -262,8 +262,18 @@ def empleados_form(request: Request, msg: str = ""):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     cfg = {"rtn_empresa": db.obtener_config("rtn_empresa", RTN_EMPRESA_DEFAULT), "nombre_empresa": db.obtener_config("nombre_empresa", NOMBRE_EMPRESA_DEFAULT)}
     dep = depreciacion.obtener_parametros()
+    
+    # CONVERTIMOS LA LISTA DE LIMITES A UN DICCIONARIO PARA EVITAR EL ERROR 500
+    lista_limites = db.listar_limites()
+    dict_limites = {}
+    for l in lista_limites:
+        if isinstance(l, dict):
+            dict_limites[l.get("clave") or l.get("nombre")] = l.get("monto") or l.get("valor")
+        else:
+            dict_limites[str(l[0])] = l[1]
+
     return templates.TemplateResponse(request, "empleados.html", {
-        "empleados": empleados_ordenados(), "orden_puestos": ORDEN_PUESTOS, "limites": db.listar_limites(),
+        "empleados": empleados_ordenados(), "orden_puestos": ORDEN_PUESTOS, "limites": dict_limites,
         "zonas": ZONAS, "cfg": cfg, "dep": dep, "msg": msg, "rol": "admin", "usuario": request.session.get("admin")
     })
 
@@ -315,7 +325,8 @@ def guardar_config(request: Request, rtn_empresa: str = Form(""), nombre_empresa
 def presupuestos_form(request: Request, msg: str = ""):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     emps = empleados_ordenados()
-    for e in emps: e["limite_actual"] = db.obtener_limite("empleado", e["nombre"]) or 0.0
+    for e in emps: 
+        e["limite_actual"] = db.obtener_limite("empleado", e["nombre"]) or 0.0
     return templates.TemplateResponse(request, "presupuestos.html", {"empleados": emps, "msg": msg, "empresa": NOMBRE_EMPRESA_DEFAULT, "rol": "admin", "usuario": request.session.get("admin")})
 
 @app.post("/panel/presupuestos/guardar")
@@ -338,7 +349,7 @@ def cargar_datos_masivos(request: Request):
     }
     for nombre, monto in datos_2026.items():
         db.guardar_limite("empleado", nombre, monto)
-    return HTMLResponse(f"<script>alert('Se cargaron {len(datos_2026)} presupuestos'); window.location.href='/panel/presupuestos';</script>")
+    return HTMLResponse(f"<script>alert('Se cargaron {len(datos_2026)} presupuestos correctamente'); window.location.href='/panel/presupuestos';</script>")
 
 @app.get("/salud")
 def salud():
