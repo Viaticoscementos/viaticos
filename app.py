@@ -182,7 +182,6 @@ def panel(request: Request, tab: str = "cumplen"):
     rol = request.session.get("rol", "empleado" if usuario else None)
     if not usuario: return RedirectResponse("/login", status_code=303)
 
-    # Obtener presupuesto del usuario actual
     presupuesto_actual = db.obtener_limite("empleado", usuario) or 0.0
 
     if rol == "admin":
@@ -324,7 +323,7 @@ def cargar_datos_masivos(request: Request):
     if not _es_admin(request):
         return HTMLResponse("<h3>No autorizado. Inicia sesión como administrador primero.</h3>", status_code=403)
     
-    # Datos extraídos de las imágenes adjuntas
+    # Datos exactos de las imágenes adjuntas
     datos_2026 = {
         "Cindy Artola": 5000.00,
         "Mario Doblado": 5000.00,
@@ -364,11 +363,11 @@ def cargar_datos_masivos(request: Request):
         contador += 1
         
     html_respuesta = f"""
-    <div style="font-family: Arial; text-align: center; margin-top: 50px;">
-        <h2 style="color: #008f39;">¡Éxito! Se cargaron {contador} presupuestos.</h2>
-        <p>Los datos del Fondo Rotativo 2026 ya están en la base de datos.</p>
+    <div style="font-family: 'Segoe UI', Arial; text-align: center; margin-top: 50px;">
+        <h2 style="color: #008f39;">¡Éxito! Se asignaron {contador} presupuestos.</h2>
+        <p>Los montos del Fondo Rotativo 2026 ya están guardados en la base de datos de Supabase.</p>
         <br>
-        <a href="/panel/presupuestos" style="background: #008f39; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px;">Ir a revisar Presupuestos</a>
+        <a href="/panel/presupuestos" style="background: #008f39; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Ir a revisar Presupuestos</a>
     </div>
     """
     return HTMLResponse(html_respuesta)
