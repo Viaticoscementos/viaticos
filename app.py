@@ -73,6 +73,9 @@ def _es_admin(request: Request) -> bool:
 
 # ------------------------------------------------------------------ Portal
 @app.get("/", response_class=HTMLResponse)
+@app.head("/")
+def health_check():
+    return {"status": "ok"}
 def portal(request: Request, token: str = ""):
     if PORTAL_TOKEN and token != PORTAL_TOKEN:
         return HTMLResponse("<h3>Enlace invalido.</h3>", status_code=403)
