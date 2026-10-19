@@ -3,7 +3,7 @@ import re
 import cv2
 import numpy as np
 import pdfplumber
-import fitz  # PyMuPDF
+import pymupdf  # <-- Cambiado para quitar el warning
 from PIL import Image
 import pytesseract
 
@@ -18,10 +18,10 @@ def extraer_texto_pdf(ruta_pdf):
     except Exception as e:
         print(f"Error leyendo PDF con pdfplumber: {e}")
     
-    # Si pdfplumber no sacó texto (porque el PDF es una imagen escaneada), usamos PyMuPDF + OCR
+    # Si pdfplumber no sacó texto, usamos PyMuPDF + OCR
     if len(texto.strip()) < 50:
         try:
-            doc = fitz.open(ruta_pdf)
+            doc = pymupdf.open(ruta_pdf) # <-- Cambiado aquí también
             page = doc.load_page(0)
             pix = page.get_pixmap(dpi=300)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
@@ -33,7 +33,6 @@ def extraer_texto_pdf(ruta_pdf):
 
 def extraer_texto_imagen(ruta_img):
     try:
-        # Preprocesamiento básico para facturas
         img = cv2.imread(ruta_img)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
@@ -51,22 +50,20 @@ def analizar(ruta_archivo):
     else:
         texto = extraer_texto_imagen(ruta_archivo)
 
-    # --- LIMPIEZA DE TEXTO PARA FACILITAR BÚSQUEDA ---
-    # Quitamos los saltos de línea y los espacios dobles para que todo quede en una sola línea
+    # Limpieza de texto para facilitar búsqueda
     texto_limpio = texto.replace('\n', ' ').replace('\r', ' ')
     texto_limpio = re.sub(r'\s+', ' ', texto_limpio)
 
-    # 1. RTN: Buscamos 14 números seguidos
+    # 1. RTN
     rtns = re.findall(r'RTN:?\s*([0-9]{14})', texto_limpio, re.IGNORECASE)
     rtn_emisor = rtns[0] if rtns else ""
 
-    # 2. CAI: Buscamos "CAI:" y capturamos todo lo que parezca el código (letras, números y guiones)
+    # 2. CAI
     cai_match = re.search(r'CAI:?\s*([A-Z0-9-]{20,40})', texto_limpio, re.IGNORECASE)
     cai = cai_match.group(1) if cai_match else ""
-    # Limpiamos el CAI de espacios internos si los hay
     cai = cai.replace(" ", "")
 
-    # 3. Fecha: Buscamos "Fecha:" y capturamos DD-MM-YYYY o DD/MM/YYYY
+    # 3. Fecha
     fecha_match = re.search(r'Fecha:?\s*(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})', texto_limpio, re.IGNORECASE)
     fecha = fecha_match.group(1) if fecha_match else ""
     
@@ -89,10 +86,9 @@ def analizar(ruta_archivo):
         "cai": cai,
         "fecha_compra": fecha,
         "monto": monto,
-        "texto_ocr": texto # Guardamos el texto original para validar el nombre
+        "texto_ocr": texto
     }
 
-# --- FUNCIÓN PARA LEER EL ODÓMETRO ---
 def leer_odometro(ruta_imagen):
     try:
         img = cv2.imread(ruta_imagen)
