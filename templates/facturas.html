@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facturas - Viáticos CENOSA</title>
+    <link rel="stylesheet" href="/static/estilos.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-body">
+
+    <div class="dashboard-container">
+        <!-- SIDEBAR BLANCO -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <img src="/static/logo_color.png" alt="Logo" style="height: 45px;">
+                <h2>Sistema Viáticos</h2>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <p class="menu-label">Principal</p>
+                <a href="/panel"><i class="fas fa-home"></i> Inicio</a>
+                <a href="/panel/facturas" class="active"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
+                
+                <p class="menu-label" style="margin-top: 15px;">Administración</p>
+                <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados</a>
+                <a href="/panel/presupuestos"><i class="fas fa-money-check-alt"></i> Presupuestos 2026</a>
+                <a href="#"><i class="fas fa-chart-pie"></i> Reportes</a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="main-content">
+            <header class="top-navbar">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Buscar factura...">
+                </div>
+                <div class="user-info">
+                    <div class="user-profile">
+                        <div class="text">
+                            <span class="name">{{ usuario }}</span>
+                            <span class="role">Administrador</span>
+                        </div>
+                        <div class="avatar"><i class="fas fa-user"></i></div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+                <div class="dashboard-header">
+                    <h2>Gestión de Facturas</h2>
+                    <p>Revisa, aprueba o rechaza las solicitudes de reembolso de los empleados.</p>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-header">
+                        <h3>Solicitudes de Reembolso</h3>
+                        <div class="tabs modern-tabs">
+                            <a href="/panel/facturas?tab=pendientes" class="{% if tab == 'pendientes' %}act{% endif %}">Pendientes ({{ conteos.pendientes }})</a>
+                            <a href="/panel/facturas?tab=cumplen" class="{% if tab == 'cumplen' %}act{% endif %}">Cumplen ({{ conteos.cumplen }})</a>
+                            <a href="/panel/facturas?tab=nocumplen" class="{% if tab == 'nocumplen' %}act{% endif %}">No cumplen ({{ conteos.nocumplen }})</a>
+                            <a href="/panel/facturas?tab=historial" class="{% if tab == 'historial' %}act{% endif %}">Historial ({{ conteos.historial }})</a>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Empleado</th>
+                                    <th>Fecha</th>
+                                    <th>Monto</th>
+                                    <th>Estatus</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set lista_actual = pendientes if tab == 'pendientes' else (cumplen if tab == 'cumplen' else (nocumplen if tab == 'nocumplen' else historial)) %}
+                                
+                                {% for factura in lista_actual %}
+                                <tr>
+                                    <td>
+                                        <div class="user-cell">
+                                            <div class="avatar-sm"><i class="fas fa-user"></i></div>
+                                            {{ factura.empleado }}
+                                        </div>
+                                    </td>
+                                    <td>{{ factura.fecha_compra or 'Reciente' }}</td>
+                                    <td class="amount">${{ factura.monto }}</td>
+                                    <td><span class="pill {{ factura.estado }}">{{ factura.estado }}</span></td>
+                                    <td>
+                                        <div style="display: flex; gap: 8px;">
+                                            <a href="/panel/factura/{{ factura.id }}" target="_blank" class="btn-action" style="background: #e2e8f0;"><i class="fas fa-eye"></i> Ver</a>
+                                            
+                                            {% if factura.estado in ['CUMPLE', 'REVISAR', 'NO_CUMPLE'] %}
+                                            <form method="POST" action="/panel/decidir" style="margin:0;">
+                                                <input type="hidden" name="sid" value="{{ factura.id }}">
+                                                <input type="hidden" name="decision" value="APROBADO">
+                                                <button type="submit" class="btn-action" style="background: #dcfce7; color: #16a34a; border: none; cursor: pointer;" title="Aprobar"><i class="fas fa-check"></i></button>
+                                            </form>
+                                            <form method="POST" action="/panel/decidir" style="margin:0;">
+                                                <input type="hidden" name="sid" value="{{ factura.id }}">
+                                                <input type="hidden" name="decision" value="RECHAZADO">
+                                                <button type="submit" class="btn-action" style="background: #fee2e2; color: #dc2626; border: none; cursor: pointer;" title="Rechazar"><i class="fas fa-times"></i></button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="empty-state">
+                                        <i class="fas fa-check-circle"></i>
+                                        <p>No hay facturas en esta bandeja.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
