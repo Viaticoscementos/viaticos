@@ -10,7 +10,6 @@
 <body class="dashboard-body">
 
     <div class="dashboard-container">
-        <!-- SIDEBAR BLANCO -->
         <aside class="sidebar">
             <div class="sidebar-brand">
                 <img src="/static/logo_color.png" alt="Logo" style="height: 45px;">
@@ -33,7 +32,6 @@
             </div>
         </aside>
 
-        <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
             <header class="top-navbar">
                 <div class="search-bar">
@@ -91,7 +89,7 @@
                                         </div>
                                     </td>
                                     <td>{{ factura.fecha_compra or 'Reciente' }}</td>
-                                    <td class="amount">${{ factura.monto }}</td>
+                                    <td class="amount">L {{ factura.monto }}</td>
                                     <td><span class="pill {{ factura.estado }}">{{ factura.estado }}</span></td>
                                     <td>
                                         <div style="display: flex; gap: 8px;">
