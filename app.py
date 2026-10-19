@@ -4,6 +4,7 @@ import json
 import shutil
 import secrets
 from pathlib import Path
+from typing import List
 
 from fastapi import FastAPI, Request, UploadFile, File, Form, Depends, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
@@ -25,10 +26,8 @@ ORDEN_PUESTOS = ["Gerente General", "Jefe", "Ingeniero Senior",
 
 def _rango_puesto(p):
     p = (p or "").strip()
-    try:
-        return ORDEN_PUESTOS.index(p)
-    except ValueError:
-        return len(ORDEN_PUESTOS)
+    try: return ORDEN_PUESTOS.index(p)
+    except ValueError: return len(ORDEN_PUESTOS)
 
 def empleados_ordenados():
     return sorted(db.listar_empleados(), key=lambda e: (_rango_puesto(e.get("puesto")), (e.get("nombre") or "").lower()))
@@ -38,7 +37,6 @@ def get_limites_puestos():
     if c_str:
         try: return json.loads(c_str)
         except: pass
-    
     default = {}
     for p in ORDEN_PUESTOS:
         default[p] = {cat: 300.0 for cat in CATEGORIAS}
@@ -85,24 +83,42 @@ def portal(request: Request, token: str = ""):
         "orden_puestos": ORDEN_PUESTOS
     })
 
+# --- RUTA MODIFICADA PARA ACEPTAR MÚLTIPLES ARCHIVOS ---
 @app.post("/api/validar")
 async def api_validar(
-    request: Request, archivo: UploadFile = File(...), empleado: str = Form(...),
-    departamento: str = Form(""), zona: str = Form("tierra_firme"),
-    categoria: str = Form("Alimentacion"), negocio: str = Form(""), num_factura: str = Form(""),
+    request: Request, 
+    archivos: List[UploadFile] = File(...), 
+    empleado: str = Form(...),
+    departamento: str = Form(""), 
+    zona: str = Form("tierra_firme"),
+    categoria: str = Form("Alimentacion"), 
+    negocio: str = Form(""), 
+    num_factura: str = Form(""),
 ):
-    ext = Path(archivo.filename or "factura").suffix.lower() or ".png"
-    nombre = f"{secrets.token_hex(6)}{ext}"
-    destino = Path(FACTURAS_DIR) / nombre
-    with open(destino, "wb") as f: shutil.copyfileobj(archivo.file, f)
+    nombres_guardados = []
+    primer_archivo_path = None
 
+    for archivo in archivos:
+        ext = Path(archivo.filename or "factura").suffix.lower() or ".png"
+        nombre = f"{secrets.token_hex(6)}{ext}"
+        destino = Path(FACTURAS_DIR) / nombre
+        with open(destino, "wb") as f: 
+            shutil.copyfileobj(archivo.file, f)
+        
+        nombres_guardados.append(nombre)
+        if not primer_archivo_path:
+            primer_archivo_path = str(destino) # Usamos el primer archivo para el OCR
+
+    # Hacemos el OCR sobre el primer archivo o el PDF consolidado
     datos = {"rtn": "", "cai": "", "fecha_compra": "", "monto": 0.0, "texto_ocr": ""}
-    try:
-        leido = ocr.analizar(str(destino))
-        for k in ("rtn", "cai", "fecha_compra", "monto"):
-            if leido.get(k): datos[k] = leido.get(k)
-        datos["texto_ocr"] = leido.get("texto_ocr", "")
-    except Exception as e: datos["texto_ocr"] = f"[OCR no disponible: {e}]"
+    if primer_archivo_path:
+        try:
+            leido = ocr.analizar(primer_archivo_path)
+            for k in ("rtn", "cai", "fecha_compra", "monto"):
+                if leido.get(k): datos[k] = leido.get(k)
+            datos["texto_ocr"] = leido.get("texto_ocr", "")
+        except Exception as e: 
+            datos["texto_ocr"] = f"[OCR no disponible: {e}]"
 
     emp_info = next((e for e in db.listar_empleados() if e["nombre"].lower() == empleado.lower()), None)
     puesto = emp_info.get("puesto", "Ejecutivo de Ventas") if emp_info else "Ejecutivo de Ventas"
@@ -116,9 +132,13 @@ async def api_validar(
     veredicto = validacion.validar(datos, datos.get("texto_ocr", ""))
 
     db.asegurar_empleado(empleado, departamento)
+    
+    # Guardamos la lista de nombres separados por coma en el campo 'archivo'
+    archivos_str = ",".join(nombres_guardados)
+    
     reg = db.crear_solicitud({
         "empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria,
-        "archivo": nombre, "rtn": datos.get("rtn"), "cai": datos.get("cai"),
+        "archivo": archivos_str, "rtn": datos.get("rtn"), "cai": datos.get("cai"),
         "fecha_compra": datos.get("fecha_compra"), "monto": veredicto["monto"],
         "monto_reembolsable": veredicto["monto_reembolsable"], "limite_aplicado": veredicto["limite_aplicado"],
         "cumple": veredicto["cumple"], "estado": veredicto["estado"], "motivos": veredicto["motivos"],
@@ -192,20 +212,17 @@ def limites_form(request: Request, msg: str = ""):
 async def limites_guardar(request: Request):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     form_data = await request.form()
-    
     nuevos_limites = {}
     for key, value in form_data.items():
         if key.startswith("limite|"):
             partes = key.split("|")
             puesto, categoria = partes[1], partes[2]
             if puesto not in nuevos_limites: nuevos_limites[puesto] = {}
-            
             if f"ilimitado|{puesto}|{categoria}" in form_data:
                 nuevos_limites[puesto][categoria] = -1.0
             else:
                 try: nuevos_limites[puesto][categoria] = float(value) if value.strip() else 0.0
                 except: nuevos_limites[puesto][categoria] = 0.0
-
     db.guardar_config("limites_puestos", json.dumps(nuevos_limites))
     return RedirectResponse("/panel/limites?msg=ok", status_code=303)
 
@@ -235,7 +252,10 @@ def ver_factura(request: Request, sid: int):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     s = db.obtener_solicitud(sid)
     if not s or not s.get("archivo"): raise HTTPException(404)
-    ruta = Path(FACTURAS_DIR) / s["archivo"]
+    
+    # Si hay varios archivos guardados (separados por coma), mostramos el primero
+    primer_archivo = s["archivo"].split(",")[0]
+    ruta = Path(FACTURAS_DIR) / primer_archivo
     if not ruta.exists(): raise HTTPException(404)
     return FileResponse(str(ruta))
 
