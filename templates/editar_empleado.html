@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Modificar empleado - CENOSA</title>
+<link rel="stylesheet" href="/static/estilos.css">
+</head>
+<body>
+<div class="topbar">
+  <img src="/static/logo_header.png" alt="CENOSA" onerror="this.style.display='none'">
+  <h1>Modificar empleado</h1>
+  <span class="sp"></span>
+  <a href="/panel/empleados">&larr; Volver</a>
+</div>
+
+<div class="wrap" style="max-width:760px">
+  <div class="card">
+    <h2>{{ emp.nombre }}</h2>
+    <form method="post" action="/panel/empleados/editar" class="grid">
+      <input type="hidden" name="emp_id" value="{{ emp.id }}">
+      <div><label>Nombre</label><input name="nombre" value="{{ emp.nombre }}" required></div>
+      <div><label>Puesto</label>
+        <select name="puesto">
+          {% set puestos = ['', 'Ingeniero Senior','Ingeniero Junior','Ejecutivo de Ventas','Ejecutivo de Ventas Senior','Gerente General','Jefe'] %}
+          {% for p in puestos %}<option value="{{ p }}" {{ 'selected' if (emp.puesto or '')==p }}>{{ p or '(sin definir)' }}</option>{% endfor %}
+        </select></div>
+      <div><label>Departamento / centro de costo</label><input name="departamento" value="{{ emp.departamento or '' }}"></div>
+      <div><label>Correo (opcional)</label><input name="correo" value="{{ emp.correo or '' }}"></div>
+      <div><label>Fondo rotativo (L)</label><input name="fondo_rotativo" value="{{ '%.0f'|format(emp.fondo_rotativo or 0) }}"></div>
+      <div><label>Depreciacion de vehiculo</label>
+        <select name="deprecia"><option value="" {{ 'selected' if not emp.deprecia_vehiculo }}>No</option><option value="1" {{ 'selected' if emp.deprecia_vehiculo }}>Si</option></select></div>
+      <div><label>Limite diario propio (L)</label><input name="limite" value="{{ '%.2f'|format(limite) if limite else '' }}" placeholder="Ej. 620"></div>
+      <div style="display:flex;align-items:end;gap:8px">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:600"><input type="checkbox" name="sin_limite" value="1" style="width:auto"> Sin restriccion (jefe/gerente)</label>
+      </div>
+      <div style="grid-column:1/-1;display:flex;gap:10px">
+        <button class="btn">Guardar cambios</button>
+        <a class="btn sec" href="/panel/empleados">Cancelar</a>
+      </div>
+    </form>
+    <p class="small">Marca “Sin restriccion” para jefes y gerentes (se les quita el limite). Para ejecutivos/ingenieros deja un limite o se aplica el tope de la zona.</p>
+  </div>
+</div>
+</body>
+</html>

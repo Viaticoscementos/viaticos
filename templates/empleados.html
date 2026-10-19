@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Empleados y configuracion - CENOSA</title>
+<link rel="stylesheet" href="/static/estilos.css">
+</head>
+<body>
+<div class="topbar">
+  <img src="/static/logo_header.png" alt="CENOSA" onerror="this.style.display='none'">
+  <h1>Empleados y configuracion</h1>
+  <span class="sp"></span>
+  <a href="/panel">&larr; Panel</a>
+  <a href="/logout">Salir</a>
+</div>
+
+<div class="wrap" style="max-width:1100px">
+  {% if msg %}<div class="msg ok">Cambios guardados.</div>{% endif %}
+
+  <div class="card">
+    <h2>Configuracion de la empresa</h2>
+    <form method="post" action="/panel/config" class="grid">
+      <div><label>Nombre de la empresa</label><input name="nombre_empresa" value="{{ cfg.nombre_empresa }}"></div>
+      <div><label>RTN de la empresa (las facturas deben venir a su nombre)</label><input name="rtn_empresa" value="{{ cfg.rtn_empresa }}"></div>
+      <div><label>Factor depreciacion (L por km)</label><input name="factor_lps_km" value="{{ dep.factor_lps_km }}"></div>
+      <div><label>Factor de conversion (odometro a km)</label><input name="factor_conversion" value="{{ dep.factor_conversion }}"></div>
+      <div><label>Restar deducciones en depreciacion</label>
+        <select name="restar_deducciones"><option value="1" {{ 'selected' if dep.restar_deducciones }}>Si</option><option value="" {{ 'selected' if not dep.restar_deducciones }}>No</option></select></div>
+      <div style="align-self:end"><button class="btn">Guardar configuracion</button></div>
+    </form>
+    <p class="small">El factor de depreciacion cambia con el precio del combustible; se edita aqui sin tocar el codigo.</p>
+  </div>
+
+  <div class="card">
+    <h2>Agregar empleado</h2>
+    <form method="post" action="/panel/empleados/agregar" class="grid">
+      <div><label>Nombre</label><input name="nombre" required></div>
+      <div><label>Puesto</label>
+        <select name="puesto">
+          <option value="">(sin definir)</option>
+          <option>Ingeniero Senior</option><option>Ingeniero Junior</option>
+          <option>Ejecutivo de Ventas</option><option>Ejecutivo de Ventas Senior</option>
+          <option>Gerente General</option><option>Jefe</option>
+        </select></div>
+      <div><label>Departamento / centro de costo</label><input name="departamento"></div>
+      <div><label>Limite diario propio (opcional, L)</label><input name="limite" placeholder="Ej. 620 (dejar vacio si sin restriccion)"></div>
+      <div><label>Depreciacion de vehiculo</label><select name="deprecia"><option value="">No</option><option value="1">Si</option></select></div>
+      <div style="align-self:end"><button class="btn">Agregar</button></div>
+    </form>
+    <p class="small">Jefes y gerentes no llevan limite: deja el campo de limite vacio. Para ejecutivos/ingenieros se aplica el tope de la zona o el que pongas aqui.</p>
+  </div>
+
+  <div class="card" style="overflow-x:auto">
+    <h2>Empleados ({{ empleados|length }}) - ordenados por cargo</h2>
+    {% if empleados %}
+    <table>
+      <tr><th>Nombre</th><th>Puesto</th><th>Depto</th><th>Limite propio</th><th>Deprecia</th><th></th></tr>
+      {% set ns = namespace(cargo='__inicio__') %}
+      {% for e in empleados %}
+      {% set cargo_actual = e.puesto or 'Sin cargo definido' %}
+      {% if cargo_actual != ns.cargo %}
+      <tr><td colspan="6" style="background:#eef2f8;color:#1F4E79;font-weight:700">{{ cargo_actual }}</td></tr>
+      {% set ns.cargo = cargo_actual %}
+      {% endif %}
+      <tr>
+        <td>{{ e.nombre }}</td><td>{{ e.puesto or '-' }}</td><td>{{ e.departamento or '-' }}</td>
+        <td>{% set l = None %}{% for lm in limites %}{% if lm.tipo=='empleado' and lm.nombre|lower==e.nombre|lower %}{% set l = lm.limite %}{% endif %}{% endfor %}{{ 'L %.2f'|format(l) if l else 'sin restriccion' }}</td>
+        <td>{{ 'Si' if e.deprecia_vehiculo else 'No' }}</td>
+        <td class="flex" style="gap:6px"><a class="btn sec sm" href="/panel/empleados/editar/{{ e.id }}">Modificar</a><form method="post" action="/panel/empleados/eliminar" onsubmit="return confirm('Eliminar?')"><input type="hidden" name="emp_id" value="{{ e.id }}"><button class="btn no sm">Eliminar</button></form></td>
+      </tr>
+      {% endfor %}
+    </table>
+    <p class="small">Orden de cargos: {{ orden_puestos|join(' → ') }} → Sin cargo definido. Al asignar el puesto de cada persona, la lista se reordena sola.</p>
+    {% else %}<p class="small">Aun no hay empleados. Se agregan aqui o se crean solos cuando alguien sube su primera factura.</p>{% endif %}
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Depreciacion de vehiculo - CENOSA</title>
+<link rel="stylesheet" href="/static/estilos.css">
+</head>
+<body>
+<div class="topbar">
+  <img src="/static/logo_header.png" alt="CENOSA" onerror="this.style.display='none'">
+  <h1>Depreciacion de vehiculo</h1>
+  <span class="sp"></span>
+  <a href="/{{ ('?token=' ~ token) if token }}">Facturas</a>
+  <a href="/login">Acceso encargada</a>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Calcula tu depreciacion por kilometraje</h2>
+    <p class="small">Agrega un tramo por cada dia o cada vehiculo que usaste. Puedes mezclar <b>kilometros</b> y <b>millas</b>, y usar vehiculos distintos (si un dia se daño uno y usaste otro). El sistema convierte todo a km y <b>suma</b> para darte el pago total. Factor actual: <b>L {{ factor }}</b> por km.</p>
+
+    <div class="grid">
+      <div>
+        <label>Tu nombre</label>
+        <input id="empleado" list="emplist" required placeholder="Nombre y apellido">
+        <datalist id="emplist">{% for e in empleados %}<option value="{{ e }}">{% endfor %}</datalist>
+      </div>
+      <div>
+        <label>Departamento / centro de costo</label>
+        <input id="departamento" placeholder="Ej. Ventas V60140">
+      </div>
+      <div>
+        <label>Zona</label>
+        <select id="zona">{% for k,v in zonas.items() %}<option value="{{ k }}">{{ v.etiqueta }}</option>{% endfor %}</select>
+      </div>
+      <div>
+        <label>Deducciones (L, opcional)</label>
+        <input id="deducciones" type="number" step="0.01" value="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="flex" style="justify-content:space-between">
+      <h2 style="margin:0">Tramos recorridos</h2>
+      <button class="btn sec sm" id="add">+ Agregar tramo</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="tabla">
+        <tr><th>Fecha</th><th>Vehiculo / placa</th><th>Unidad</th><th>Lectura inicial</th><th>Lectura final</th><th>Foto odometro</th><th>km</th><th></th></tr>
+      </table>
+    </div>
+    <p class="small">La <b>foto del odometro</b> es opcional: si la subes, el sistema intenta leer el numero y lo coloca por ti (revisa que quede bien). 1 milla = {{ '%.4f'|format(milla_km) }} km.</p>
+    <button class="btn" id="calc">Calcular y registrar</button>
+    <span id="estado" class="small"></span>
+    <div id="res" class="resultado"></div>
+  </div>
+</div>
+
+<script>
+const tabla=document.getElementById('tabla'),res=document.getElementById('res'),est=document.getElementById('estado');
+const TOKEN="{{ token }}";
+function fila(){
+  const tr=document.createElement('tr');
+  tr.innerHTML=`
+    <td><input type="date" class="f"></td>
+    <td><input class="v" placeholder="Carro / placa"></td>
+    <td><select class="u"><option value="km">Kilometros</option><option value="milla">Millas</option></select></td>
+    <td><input class="li" type="number" step="0.1" placeholder="0"></td>
+    <td><input class="lf" type="number" step="0.1" placeholder="0"></td>
+    <td><input class="foto" type="file" accept="image/*" style="font-size:11px"></td>
+    <td class="km">-</td>
+    <td><button class="btn no sm del">x</button></td>`;
+  tabla.appendChild(tr);
+  const li=tr.querySelector('.li'),lf=tr.querySelector('.lf'),u=tr.querySelector('.u'),km=tr.querySelector('.km');
+  function upd(){const d=Math.max((parseFloat(lf.value)||0)-(parseFloat(li.value)||0),0);const f=u.value==='milla'?{{ milla_km }}:1;km.textContent=(d*f).toFixed(1);}
+  [li,lf,u].forEach(e=>e.addEventListener('input',upd));
+  tr.querySelector('.del').onclick=()=>{tr.remove();};
+  tr.querySelector('.foto').onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    est.innerHTML=' <span class="spin"></span> Leyendo odometro...';
+    const fd=new FormData();fd.append('archivo',f);
+    try{const r=await fetch('/api/leer-odometro',{method:'POST',body:fd});const d=await r.json();
+      if(d.valor){if(!li.value)li.value=d.valor;else lf.value=d.valor;upd();}
+      else alert('No se pudo leer el numero. Escribelo a mano.');}
+    catch(_){alert('No se pudo leer la foto.');}
+    est.innerHTML='';
+  };
+}
+document.getElementById('add').onclick=e=>{e.preventDefault();fila();};
+fila();
+
+document.getElementById('calc').onclick=async e=>{
+  e.preventDefault();
+  const emp=document.getElementById('empleado').value.trim();
+  if(!emp){alert('Escribe tu nombre');return;}
+  const tramos=[];
+  tabla.querySelectorAll('tr').forEach((tr,i)=>{if(i===0)return;
+    const li=parseFloat(tr.querySelector('.li').value)||0,lf=parseFloat(tr.querySelector('.lf').value)||0;
+    if(lf<=li)return;
+    tramos.push({fecha:tr.querySelector('.f').value,vehiculo:tr.querySelector('.v').value,
+      unidad:tr.querySelector('.u').value,lectura_inicial:li,lectura_final:lf});});
+  if(!tramos.length){alert('Agrega al menos un tramo con lectura final mayor que la inicial');return;}
+  const fd=new FormData();
+  fd.append('empleado',emp);fd.append('departamento',document.getElementById('departamento').value);
+  fd.append('zona',document.getElementById('zona').value);fd.append('deducciones',document.getElementById('deducciones').value||'0');
+  fd.append('tramos',JSON.stringify(tramos));fd.append('guardar','1');
+  est.innerHTML=' <span class="spin"></span> Calculando...';
+  try{const r=await fetch('/api/depreciacion',{method:'POST',body:fd});const d=await r.json();
+    if(d.error){res.innerHTML='<div class="msg err">'+d.error+'</div>';}else pintar(d);}
+  catch(_){res.innerHTML='<div class="msg err">No se pudo calcular.</div>';}
+  est.innerHTML='';
+};
+function pintar(d){
+  let h='<div class="card" style="margin-top:16px"><span class="badge CUMPLE">DEPRECIACION CALCULADA</span>';
+  if(d.folio)h+=' <span class="small">Folio: <b>'+d.folio+'</b></span>';
+  h+='<table style="margin-top:12px"><tr><th>Fecha</th><th>Vehiculo</th><th>Lectura</th><th>Unidad</th><th>km</th><th>Depreciacion</th></tr>';
+  d.detalle.forEach(t=>{h+='<tr><td>'+(t.fecha||'-')+'</td><td>'+(t.vehiculo||'-')+'</td><td>'+t.lectura_inicial.toFixed(0)+' \u2192 '+t.lectura_final.toFixed(0)+'</td><td>'+t.unidad+'</td><td>'+t.km.toFixed(1)+'</td><td>L '+t.depreciacion.toFixed(2)+'</td></tr>';});
+  h+='</table>';
+  h+='<p class="small" style="margin-top:10px">Total recorrido: <b>'+d.total_km.toFixed(1)+' km</b> &nbsp; Factor: <b>L '+d.factor_lps_km+'/km</b> &nbsp; Deducciones: <b>L '+Number(d.deducciones).toFixed(2)+'</b></p>';
+  h+='<p style="font-size:17px">Pago por depreciacion: <b>L '+d.pago_neto.toFixed(2)+'</b></p>';
+  h+='<div class="msg ok">Quedo registrada para que la encargada la revise y apruebe.</div></div>';
+  res.innerHTML=h;res.scrollIntoView({behavior:'smooth'});
+}
+</script>
+</body>
+</html>

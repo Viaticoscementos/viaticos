@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Panel de Viaticos - CENOSA</title>
+<link rel="stylesheet" href="/static/estilos.css">
+</head>
+<body>
+<div class="topbar">
+  <img src="/static/logo_header.png" alt="CENOSA" onerror="this.style.display='none'">
+  <h1>Panel de Viaticos</h1>
+  <span class="sp"></span>
+  <span class="small" style="color:#dbe7f5">{{ usuario }}</span>
+  <a href="/panel/empleados">Empleados y config</a>
+  <a href="/panel/tabla">Exportar todo</a>
+  <a href="/logout">Salir</a>
+</div>
+
+<div class="wrap" style="max-width:1200px">
+  <div class="tabs">
+    <a href="/panel?tab=cumplen" class="{{ 'act' if tab=='cumplen' }}">Cumplen <span class="n">{{ conteos.cumplen }}</span></a>
+    <a href="/panel?tab=nocumplen" class="{{ 'act' if tab=='nocumplen' }}">No cumplen <span class="n">{{ conteos.nocumplen }}</span></a>
+    <a href="/panel?tab=pendientes" class="{{ 'act' if tab=='pendientes' }}">Pendientes <span class="n">{{ conteos.pendientes }}</span></a>
+    <a href="/panel?tab=historial" class="{{ 'act' if tab=='historial' }}">Historial <span class="n">{{ conteos.historial }}</span></a>
+  </div>
+
+  {% macro tabla(items, acciones=False) %}
+  <div class="card" style="overflow-x:auto">
+    {% if items %}
+    <table>
+      <tr><th>Folio</th><th>Empleado</th><th>Depto</th><th>Categoria</th><th>Fecha</th>
+      <th>RTN</th><th>CAI</th><th>Monto</th><th>Reemb.</th><th>Estado</th><th>Detalle</th>
+      <th>Factura</th>{% if acciones %}<th>Accion</th>{% else %}<th>Memo</th>{% endif %}</tr>
+      {% for s in items %}
+      <tr>
+        <td>{{ s.folio }}</td><td>{{ s.empleado }}</td><td>{{ s.departamento }}</td>
+        <td>{{ (s.categoria or '')|title }}</td><td>{{ s.fecha_compra or '-' }}</td>
+        <td>{{ s.rtn or '-' }}</td><td style="max-width:140px;word-break:break-all">{{ s.cai or '-' }}</td>
+        <td>L {{ '%.2f'|format(s.monto or 0) }}</td>
+        <td>L {{ '%.2f'|format(s.monto_reembolsable or 0) }}</td>
+        <td><span class="pill {{ s.estado }}">{{ s.estado }}</span></td>
+        <td class="small">{{ s.motivos or s.observaciones or 'OK' }}</td>
+        <td>{% if s.archivo %}<a href="/panel/factura/{{ s.id }}" target="_blank">ver</a>{% else %}-{% endif %}</td>
+        {% if acciones %}
+        <td>
+          <form method="post" action="/panel/decidir" class="flex" style="gap:4px">
+            <input type="hidden" name="sid" value="{{ s.id }}">
+            <input name="observaciones" placeholder="nota" style="width:90px;padding:5px">
+            <button class="btn ok sm" name="decision" value="APROBAR">Aprobar</button>
+            <button class="btn no sm" name="decision" value="RECHAZAR">Rechazar</button>
+          </form>
+        </td>
+        {% else %}
+        <td><a class="btn sec sm" href="/panel/memo/{{ s.id }}">Memo</a></td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="small">No hay registros en esta pestaña.</p>
+    {% endif %}
+  </div>
+  {% endmacro %}
+
+  {% if tab=='cumplen' %}
+    <p class="small">Facturas que cumplen y estan listas para aprobar.</p>
+    {{ tabla(cumplen, acciones=True) }}
+  {% elif tab=='nocumplen' %}
+    <p class="small">Facturas que no cumplen (revisar motivo en rojo).</p>
+    {{ tabla(nocumplen, acciones=False) }}
+  {% elif tab=='pendientes' %}
+    <p class="small">Todo lo que espera decision (cumplen + exceden limite).</p>
+    {{ tabla(pendientes, acciones=True) }}
+  {% else %}
+    <p class="small">Facturas ya aprobadas o rechazadas.</p>
+    {{ tabla(historial, acciones=False) }}
+  {% endif %}
+</div>
+</body>
+</html>
