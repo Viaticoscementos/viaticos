@@ -10,7 +10,6 @@
 <body class="dashboard-body">
 
     <div class="dashboard-container">
-        <!-- SIDEBAR BLANCO -->
         <aside class="sidebar">
             <div class="sidebar-brand">
                 <img src="/static/logo_color.png" alt="Logo" style="height: 45px;">
@@ -33,7 +32,6 @@
             </div>
         </aside>
 
-        <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
             <header class="top-navbar">
                 <div class="user-info" style="margin-left: auto;">
@@ -137,7 +135,14 @@
                                     <td><strong>{{ emp.nombre }}</strong></td>
                                     <td>{{ emp.puesto or 'Sin puesto' }}</td>
                                     <td>{{ emp.departamento or '-' }}</td>
-                                    <td>${{ "{:,.2f}".format(limites.get(emp.nombre, 0)) }}</td>
+                                    <td>
+                                        {% set limite_monto = limites.get(emp.nombre) %}
+                                        {% if limite_monto %}
+                                            L {{ "{:,.2f}".format(limite_monto) }}
+                                        {% else %}
+                                            L 0.00
+                                        {% endif %}
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
