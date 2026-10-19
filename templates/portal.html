@@ -9,9 +9,15 @@
 </head>
 <body class="dashboard-body" style="background: var(--bg-body);">
 
-    <header class="login-header" style="display: flex; align-items: center; gap: 15px;">
+    <!-- Barra superior con botón de volver -->
+    <header class="login-header" style="display: flex; align-items: center; gap: 15px; padding: 15px 30px;">
         <img src="/static/logo_color.png" alt="Logo" style="height: 40px; background: white; padding: 5px; border-radius: 8px;">
         <h1 style="margin: 0; font-size: 1.2rem;">Portal de Reembolsos</h1>
+        <div style="margin-left: auto;">
+            <a href="/panel" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white;">
+                <i class="fas fa-arrow-left"></i> Volver al menú
+            </a>
+        </div>
     </header>
 
     <div class="content-wrapper" style="max-width: 800px; padding-top: 40px;">
@@ -36,7 +42,6 @@
                     </div>
                     <div class="form-group">
                         <label>Centro de Costo</label>
-                        <!-- AQUÍ ESTÁ EL MENÚ DESPLEGABLE -->
                         <select name="departamento" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                             <option value="">Selecciona tu departamento...</option>
                             {% for cc in centros_costos %}
