@@ -80,29 +80,36 @@
                     <div style="text-align: center; margin-bottom: 15px;">
                         <i class="fas fa-tachometer-alt" style="font-size: 2rem; color: #16a34a; margin-bottom: 10px;"></i>
                         <p style="margin: 0; font-weight: bold; color: #166534; font-size: 1.05rem;">Kilometraje (Obligatorio para Combustible)</p>
-                        <p style="margin: 5px 0 15px; font-size: 0.85rem; color: #475569;">Ingresa el kilometraje inicial y final. Puedes usar la cámara para el final.</p>
+                        <p style="margin: 5px 0 15px; font-size: 0.85rem; color: #475569;">Ingresa el kilometraje inicial y final. Puedes usar la cámara para leerlos.</p>
                     </div>
                     
                     <div class="grid-odometro" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <!-- Km Inicial -->
                         <div>
                             <label style="font-size: 0.85rem; font-weight: 600; color: #166534;">Km Inicial</label>
-                            <input type="number" name="km_inicial" id="km_inicial" required placeholder="Ej. 15000" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+                            <div style="display: flex; gap: 8px;">
+                                <input type="number" name="km_inicial" id="km_inicial" required placeholder="Ej. 15000" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
+                                <button type="button" class="btn-action" onclick="document.getElementById('foto_km_inicial').click()" style="background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; padding: 0 12px; border-radius: 6px;" title="Subir foto para leer Km Inicial">
+                                    <i class="fas fa-camera"></i>
+                                </button>
+                            </div>
+                            <input type="file" id="foto_km_inicial" name="foto_km_inicial" accept="image/*" style="display: none;" onchange="procesarFotoOdometro(this, 'km_inicial', 'status-odo-inicial')">
+                            <p id="status-odo-inicial" style="font-size: 0.75rem; color: #16a34a; margin-top: 5px; font-weight: bold;"></p>
                         </div>
                         
-                        <!-- Km Final con botón de cámara -->
+                        <!-- Km Final -->
                         <div>
                             <label style="font-size: 0.85rem; font-weight: 600; color: #166534;">Km Final</label>
                             <div style="display: flex; gap: 8px;">
                                 <input type="number" name="km_final" id="km_final" required placeholder="Ej. 15400" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 1rem;">
-                                <button type="button" class="btn-action" onclick="document.getElementById('foto_odometro').click()" style="background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; padding: 0 12px; border-radius: 6px;" title="Subir foto para leer Km Final">
+                                <button type="button" class="btn-action" onclick="document.getElementById('foto_km_final').click()" style="background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; padding: 0 12px; border-radius: 6px;" title="Subir foto para leer Km Final">
                                     <i class="fas fa-camera"></i>
                                 </button>
                             </div>
-                            <input type="file" id="foto_odometro" accept="image/*" style="display: none;" onchange="procesarFotoOdometro(this)">
+                            <input type="file" id="foto_km_final" name="foto_km_final" accept="image/*" style="display: none;" onchange="procesarFotoOdometro(this, 'km_final', 'status-odo-final')">
+                            <p id="status-odo-final" style="font-size: 0.75rem; color: #16a34a; margin-top: 5px; font-weight: bold;"></p>
                         </div>
                     </div>
-                    <p id="status-odo" style="font-size: 0.85rem; color: #16a34a; text-align: center; margin-top: 10px; font-weight: bold;"></p>
                 </div>
 
                 <!-- SUBIDA DE FACTURA -->
@@ -139,16 +146,17 @@
                 inputKmFinal.required = false;
                 inputKmInicial.value = '';
                 inputKmFinal.value = '';
-                document.getElementById('status-odo').innerHTML = '';
+                document.getElementById('status-odo-inicial').innerHTML = '';
+                document.getElementById('status-odo-final').innerHTML = '';
             }
         }
 
-        async function procesarFotoOdometro(input) {
+        async function procesarFotoOdometro(input, targetInputId, statusId) {
             if (!input.files || input.files.length === 0) return;
             const file = input.files[0];
-            const status = document.getElementById('status-odo');
+            const status = document.getElementById(statusId);
             
-            status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Leyendo odómetro...';
+            status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Leyendo...';
             status.style.color = '#d97706';
 
             const formData = new FormData();
@@ -159,15 +167,15 @@
                 const data = await res.json();
                 
                 if (data.valor) {
-                    document.getElementById('km_final').value = data.valor;
-                    status.innerHTML = `✅ Kilometraje detectado: <strong>${data.valor}</strong> km`;
+                    document.getElementById(targetInputId).value = data.valor;
+                    status.innerHTML = `✅ Leído: ${data.valor}`;
                     status.style.color = '#16a34a';
                 } else {
-                    status.innerHTML = '⚠️ No se pudo leer el número. Ingrésalo manualmente.';
+                    status.innerHTML = '⚠️ Ingrésalo manual';
                     status.style.color = '#dc2626';
                 }
             } catch (e) {
-                status.innerHTML = '⚠️ Error al procesar la imagen.';
+                status.innerHTML = '⚠️ Error';
                 status.style.color = '#dc2626';
             }
         }
@@ -188,7 +196,6 @@
             const btn = form.querySelector('button[type="submit"]');
             const resDiv = document.getElementById('resultado');
             
-            // Validación extra para combustible
             if (document.getElementById('select-categoria').value === 'Combustible') {
                 const ki = parseFloat(document.getElementById('km_inicial').value) || 0;
                 const kf = parseFloat(document.getElementById('km_final').value) || 0;
@@ -212,7 +219,7 @@
                 if (data.cumple) {
                     resDiv.innerHTML = `<div style="background: #dcfce7; color: #16a34a; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #bbf7d0;">
                         <h3><i class="fas fa-check-circle"></i> ¡Factura Registrada!</h3>
-                        <p style="font-size: 1.1rem;">Monto detectado: <strong>L ${data.monto_extraido}</strong></p>
+                        <p style="font-size: 1.1rem;">Monto: <strong>L ${data.monto_extraido}</strong></p>
                         <p style="font-size: 0.9rem;">Folio: <strong>${data.folio}</strong></p>
                     </div>`;
                 } else {
@@ -226,7 +233,7 @@
                 document.getElementById('lista-archivos').innerHTML = '';
                 document.getElementById('seccion-odometro').style.display = 'none';
             } catch (error) {
-                resDiv.innerHTML = `<div style="background: #fee2e2; color: #dc2626; padding: 20px; border-radius: 12px; text-align: center;">Error de conexión. Intenta de nuevo.</div>`;
+                resDiv.innerHTML = `<div style="background: #fee2e2; color: #dc2626; padding: 20px; border-radius: 12px; text-align: center;">Error de conexión.</div>`;
                 resDiv.style.display = 'block';
             } finally {
                 btn.innerHTML = '<i class="fas fa-robot" style="margin-right: 8px;"></i> Analizar y Enviar';
