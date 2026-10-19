@@ -21,7 +21,7 @@
 <body class="dashboard-body">
 
     <div class="dashboard-container">
-        <!-- SIDEBAR -->
+        <!-- SIDEBAR LIMPIO Y ORDENADO -->
         <aside class="sidebar">
             <div class="sidebar-brand">
                 <img src="/static/logo_color.png" alt="Logo" style="height: 45px;">
@@ -33,9 +33,8 @@
                 <a href="/panel/facturas"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
                 
                 <p class="menu-label" style="margin-top: 15px;">Administración</p>
-                <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados</a>
+                <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados y Config</a>
                 <a href="/panel/presupuestos"><i class="fas fa-money-check-alt"></i> Presupuestos 2026</a>
-                <!-- NUEVA PESTAÑA AQUI -->
                 <a href="/panel/limites" class="active"><i class="fas fa-sliders-h"></i> Límites por Puesto</a>
                 <a href="/panel/reportes"><i class="fas fa-chart-pie"></i> Reportes</a>
             </nav>
@@ -44,6 +43,7 @@
             </div>
         </aside>
 
+        <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
             <header class="top-navbar">
                 <div class="user-info" style="margin-left: auto;">
@@ -92,13 +92,11 @@
                                         <td>
                                             <div style="display: flex; align-items: center; justify-content: center; gap: 5px;">
                                                 <span style="font-size: 0.8rem; color: #64748b;">L</span>
-                                                <!-- Cuadro de texto -->
                                                 <input type="number" step="0.01" 
                                                        class="limite-input"
                                                        name="limite|{{ puesto }}|{{ cat }}" 
                                                        value="{{ limite_val if limite_val >= 0 else '' }}"
                                                        {{ 'disabled' if limite_val == -1 else '' }}>
-                                                <!-- Casilla de Ilimitado -->
                                                 <input type="checkbox" class="chk-ilimitado"
                                                        name="ilimitado|{{ puesto }}|{{ cat }}"
                                                        value="1"
