@@ -1,31 +1,43 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Acceso - Viaticos CENOSA</title>
-<link rel="stylesheet" href="/static/estilos.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso - Viáticos CENOSA</title>
+    <!-- Enlace a tu hoja de estilos -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
 </head>
-<body>
-<div class="topbar">
-  <img src="/static/logo_header.png" alt="CENOSA" onerror="this.style.display='none'">
-  <h1>Panel de Viaticos</h1>
-</div>
-<div class="loginbox card">
-  <h2>Acceso de la encargada</h2>
-  {% if error %}<div class="msg err">Usuario o contraseña incorrectos.</div>{% endif %}
-  <form method="post" action="/login">
-    <div style="margin-bottom:12px">
-      <label>Usuario</label>
-      <input name="usuario" autofocus required>
-    </div>
-    <div style="margin-bottom:16px">
-      <label>Contraseña</label>
-      <input name="password" type="password" required>
-    </div>
-    <button class="btn" type="submit" style="width:100%">Entrar</button>
-  </form>
-  <p class="small" style="margin-top:14px"><a href="/">&larr; Ir al portal de empleados</a></p>
-</div>
+<body class="login-body">
+    <!-- Barra superior verde -->
+    <header class="login-header">
+        <div class="header-content">
+            <h1>Panel de Viáticos</h1>
+        </div>
+    </header>
+
+    <!-- Contenedor central del Login -->
+    <main class="login-main">
+        <div class="login-card">
+            <h2>Acceso de la encargada</h2>
+            
+            <form method="POST" action="/login">
+                <div class="form-group">
+                    <label for="usuario">Usuario</label>
+                    <input type="text" id="usuario" name="usuario" placeholder="Ingresa tu usuario" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" name="password" placeholder="••••••••" required>
+                </div>
+                
+                <button type="submit" class="btn-entrar">Entrar</button>
+            </form>
+
+            <div class="login-links">
+                <a href="/?token=cenosa2026">← Ir al portal de empleados</a>
+            </div>
+        </div>
+    </main>
 </body>
 </html>
