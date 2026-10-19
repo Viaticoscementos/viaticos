@@ -38,7 +38,8 @@
                     <input type="text" placeholder="Buscar factura o empleado...">
                 </div>
                 <div class="user-info">
-                    <span>Hola, <strong>{{ session.get('admin_user', 'Encargada') }}</strong></span>
+                    <!-- Corregido: request.session para FastAPI -->
+                    <span>Hola, <strong>{{ request.session.get('admin_user', 'Encargada') }}</strong></span>
                     <div class="avatar"><i class="fas fa-user-tie"></i></div>
                 </div>
             </header>
