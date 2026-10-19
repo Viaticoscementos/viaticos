@@ -56,13 +56,11 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 db.init_db()
 seed.sembrar()
 
-# --- EVENTO DE ARRANQUE: CARGA AUTOMÁTICA DE PRESUPUESTOS 2026 ---
 @app.on_event("startup")
 def cargar_presupuestos_al_iniciar():
-    # Verificamos si ya hay límites guardados. Si no hay, los inyectamos.
     try:
         limites = db.listar_limites()
-        if len(limites) < 5: # Si hay muy pocos, es porque la base está vacía o nueva
+        if len(limites) < 5:
             datos_2026 = {
                 "Cindy Artola": 5000.00, "Mario Doblado": 5000.00, "Maria Josee Coto": 11000.00, 
                 "Christopher Midence": 17000.00, "Carlos Humberto Mejia": 35000.00, "Eduardo Lopez Lopez": 15000.00, 
@@ -78,7 +76,7 @@ def cargar_presupuestos_al_iniciar():
             }
             for nombre, monto in datos_2026.items():
                 db.guardar_limite("empleado", nombre, monto)
-            print("✅ Presupuestos 2026 cargados automáticamente en la base de datos.")
+            print("✅ Presupuestos 2026 cargados automáticamente.")
     except Exception as e:
         print(f"⚠️ Error al cargar presupuestos: {e}")
 
@@ -239,6 +237,14 @@ def panel(request: Request, tab: str = "cumplen"):
         "empresa": NOMBRE_EMPRESA_DEFAULT, "token": PORTAL_TOKEN, "chart_data": gastos_por_mes
     })
 
+@app.get("/panel/reportes", response_class=HTMLResponse)
+def reportes_form(request: Request):
+    if not _es_admin(request): return RedirectResponse("/login", status_code=303)
+    return templates.TemplateResponse(request, "reportes.html", {
+        "usuario": request.session.get("admin"), "rol": "admin",
+        "empleados": empleados_ordenados(), "empresa": NOMBRE_EMPRESA_DEFAULT
+    })
+
 @app.get("/panel/facturas", response_class=HTMLResponse)
 def panel_facturas(request: Request, tab: str = "pendientes"):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
@@ -278,6 +284,14 @@ def memo(request: Request, sid: int):
     s = db.obtener_solicitud(sid)
     if not s: raise HTTPException(404)
     ruta = reportes.generar_memo(s)
+    return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+@app.get("/panel/memo-empleado/{empleado}")
+def memo_empleado(request: Request, empleado: str):
+    if not _es_admin(request): return RedirectResponse("/login", status_code=303)
+    sols = [s for s in (db.listar_solicitudes(estado="APROBADO")) if (s.get("empleado") or "").lower() == empleado.lower()]
+    if not sols: raise HTTPException(404, "Sin facturas aprobadas para ese empleado")
+    ruta = reportes.generar_memo(sols, empleado=empleado)
     return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @app.get("/panel/tabla")
