@@ -61,52 +61,52 @@ def portal(request: Request, token: str = ""):
 async def api_validar(
     request: Request, archivo: UploadFile = File(...), empleado: str = Form(...),
     departamento: str = Form(""), zona: str = Form("tierra_firme"),
-    categoria: str = Form(""), negocio: str = Form(""), num_factura: str = Form(""),
-    rtn: str = Form(""), cai: str = Form(""), fecha_compra: str = Form(""),
-    monto: str = Form(""), guardar: str = Form("1"),
+    categoria: str = Form("Alimentacion"), negocio: str = Form(""), num_factura: str = Form(""),
 ):
+    # 1. Guardar el archivo físico
     ext = Path(archivo.filename or "factura").suffix.lower() or ".png"
     nombre = f"{secrets.token_hex(6)}{ext}"
     destino = Path(FACTURAS_DIR) / nombre
     with open(destino, "wb") as f:
         shutil.copyfileobj(archivo.file, f)
 
-    datos = {"rtn": rtn, "cai": cai, "fecha_compra": fecha_compra, "monto": monto, "texto_ocr": ""}
-    if not (rtn and cai and monto):
-        try:
-            leido = ocr.analizar(str(destino))
-            for k in ("rtn", "cai", "fecha_compra", "monto"):
-                if not datos.get(k): datos[k] = leido.get(k) or datos.get(k)
-            datos["texto_ocr"] = leido.get("texto_ocr", "")
-            if not datos.get("fecha_limite"): datos["fecha_limite"] = leido.get("fecha_limite")
-        except Exception as e:
-            datos["texto_ocr"] = f"[OCR no disponible: {e}]"
+    # 2. AUTOMATIZACIÓN: Ejecutar el OCR para leer la factura
+    datos = {"rtn": "", "cai": "", "fecha_compra": "", "monto": 0.0, "texto_ocr": ""}
+    try:
+        leido = ocr.analizar(str(destino))
+        for k in ("rtn", "cai", "fecha_compra", "monto"):
+            if leido.get(k): 
+                datos[k] = leido.get(k)
+        datos["texto_ocr"] = leido.get("texto_ocr", "")
+        if not datos.get("fecha_limite"): 
+            datos["fecha_limite"] = leido.get("fecha_limite")
+    except Exception as e:
+        datos["texto_ocr"] = f"[OCR no disponible: {e}]"
 
+    # 3. Validar con las reglas de negocio (límites de presupuesto, RTN, etc.)
     datos.update({"empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria})
     veredicto = validacion.validar(datos, datos.get("texto_ocr", ""))
 
-    resultado = {
-        "estado": veredicto["estado"], "cumple": veredicto["cumple"], "checklist": veredicto["checklist"],
-        "motivos": veredicto["motivos"], "limite": veredicto["limite_aplicado"], "monto": veredicto["monto"],
-        "reembolsable": veredicto["monto_reembolsable"],
-        "datos": {k: datos.get(k) for k in ("rtn", "cai", "fecha_compra", "monto")},
-    }
+    # 4. Guardar en la base de datos automáticamente
+    db.asegurar_empleado(empleado, departamento)
+    reg = db.crear_solicitud({
+        "empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria,
+        "archivo": nombre, "rtn": datos.get("rtn"), "cai": datos.get("cai"),
+        "fecha_compra": datos.get("fecha_compra"), "fecha_limite": datos.get("fecha_limite"),
+        "negocio": negocio, "num_factura": num_factura, "monto": veredicto["monto"],
+        "monto_reembolsable": veredicto["monto_reembolsable"], "limite_aplicado": veredicto["limite_aplicado"],
+        "cumple": veredicto["cumple"], "estado": veredicto["estado"], "motivos": veredicto["motivos"],
+        "texto_ocr": datos.get("texto_ocr", ""),
+    })
 
-    if guardar in ("1", "true", "on"):
-        db.asegurar_empleado(empleado, departamento)
-        reg = db.crear_solicitud({
-            "empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria,
-            "archivo": nombre, "rtn": datos.get("rtn"), "cai": datos.get("cai"),
-            "fecha_compra": datos.get("fecha_compra"), "fecha_limite": datos.get("fecha_limite"),
-            "negocio": negocio, "num_factura": num_factura, "monto": veredicto["monto"],
-            "monto_reembolsable": veredicto["monto_reembolsable"], "limite_aplicado": veredicto["limite_aplicado"],
-            "cumple": veredicto["cumple"], "estado": veredicto["estado"], "motivos": veredicto["motivos"],
-            "texto_ocr": datos.get("texto_ocr", ""),
-        })
-        resultado["folio"] = reg["folio"]
-    else:
-        destino.unlink(missing_ok=True)
-    return JSONResponse(resultado)
+    # 5. Devolver el resultado al usuario en la pantalla
+    return JSONResponse({
+        "estado": veredicto["estado"],
+        "cumple": veredicto["cumple"],
+        "motivos": veredicto["motivos"],
+        "monto_extraido": veredicto["monto"],
+        "folio": reg["folio"]
+    })
 
 @app.get("/depreciacion", response_class=HTMLResponse)
 def depreciacion_portal(request: Request, token: str = ""):
@@ -139,6 +139,7 @@ async def api_depreciacion(
     if not lista: return JSONResponse({"error": "No se enviaron tramos."}, status_code=400)
     res = depreciacion.calcular(lista, deducciones=deducciones)
     resumen = "; ".join(f"{t.get('fecha','')} {t.get('vehiculo','')} {t['lectura_inicial']:.0f}->{t['lectura_final']:.0f} {t['unidad']} ({t['km']:.1f} km)" for t in res["detalle"])
+    
     if guardar in ("1", "true", "on"):
         db.asegurar_empleado(empleado, departamento)
         reg = db.crear_solicitud({
@@ -263,7 +264,6 @@ def empleados_form(request: Request, msg: str = ""):
     cfg = {"rtn_empresa": db.obtener_config("rtn_empresa", RTN_EMPRESA_DEFAULT), "nombre_empresa": db.obtener_config("nombre_empresa", NOMBRE_EMPRESA_DEFAULT)}
     dep = depreciacion.obtener_parametros()
     
-    # CONVERTIMOS LA LISTA DE LIMITES A UN DICCIONARIO PARA EVITAR EL ERROR 500
     lista_limites = db.listar_limites()
     dict_limites = {}
     for l in lista_limites:
