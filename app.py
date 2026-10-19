@@ -83,7 +83,6 @@ def portal(request: Request, token: str = ""):
         "orden_puestos": ORDEN_PUESTOS
     })
 
-# --- RUTA API VALIDAR (CON SOPORTE PARA KM INICIAL Y FINAL) ---
 @app.post("/api/validar")
 async def api_validar(
     request: Request, 
@@ -101,32 +100,26 @@ async def api_validar(
     primer_archivo_path = None
     info_km = ""
 
-    # 1. Guardar archivos de factura
     for archivo in archivos:
         ext = Path(archivo.filename or "factura").suffix.lower() or ".png"
         nombre = f"{secrets.token_hex(6)}{ext}"
         destino = Path(FACTURAS_DIR) / nombre
         with open(destino, "wb") as f: 
             shutil.copyfileobj(archivo.file, f)
-        
         nombres_guardados.append(nombre)
-        if not primer_archivo_path:
-            primer_archivo_path = str(destino)
+        if not primer_archivo_path: primer_archivo_path = str(destino)
 
-    # 2. Procesar kilometraje si es combustible
     if categoria == 'Combustible':
         try:
             ki = float(km_inicial) if km_inicial else 0.0
             kf = float(km_final) if km_final else 0.0
             if kf > ki:
-                distancia = kf - ki
-                info_km = f" [Km Inicial: {ki:.0f} | Km Final: {kf:.0f} | Recorrido: {distancia:.0f} km]"
+                info_km = f" [Km Inicial: {ki:.0f} | Km Final: {kf:.0f} | Recorrido: {kf-ki:.0f} km]"
             else:
                 info_km = f" [Error en lecturas: Inicial {ki}, Final {kf}]"
         except ValueError:
             info_km = " [Error al leer los kilometrajes]"
 
-    # 3. Hacemos el OCR sobre la factura
     datos = {"rtn": "", "cai": "", "fecha_compra": "", "monto": 0.0, "texto_ocr": ""}
     if primer_archivo_path:
         try:
@@ -137,7 +130,6 @@ async def api_validar(
         except Exception as e: 
             datos["texto_ocr"] = f"[OCR no disponible: {e}]"
 
-    # 4. Validar con reglas de negocio
     emp_info = next((e for e in db.listar_empleados() if e["nombre"].lower() == empleado.lower()), None)
     puesto = emp_info.get("puesto", "Ejecutivo de Ventas") if emp_info else "Ejecutivo de Ventas"
     if not puesto or puesto not in ORDEN_PUESTOS: puesto = ORDEN_PUESTOS[-1]
@@ -149,11 +141,9 @@ async def api_validar(
     datos.update({"empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria, "limite_manual": limite_categoria})
     veredicto = validacion.validar(datos, datos.get("texto_ocr", ""))
 
-    # 5. Guardar en BD
     db.asegurar_empleado(empleado, departamento)
     archivos_str = ",".join(nombres_guardados)
     
-    # Agregamos el KM a los motivos
     motivos_finales = veredicto["motivos"] + info_km
     if info_km and veredicto["cumple"]:
         motivos_finales = f"Factura válida.{info_km}"
@@ -166,11 +156,7 @@ async def api_validar(
         "cumple": veredicto["cumple"], "estado": veredicto["estado"], "motivos": motivos_finales,
         "texto_ocr": datos.get("texto_ocr", ""),
     })
-    
-    return JSONResponse({
-        "estado": veredicto["estado"], "cumple": veredicto["cumple"], "motivos": motivos_finales, 
-        "monto_extraido": veredicto["monto"], "folio": reg["folio"]
-    })
+    return JSONResponse({"estado": veredicto["estado"], "cumple": veredicto["cumple"], "motivos": motivos_finales, "monto_extraido": veredicto["monto"], "folio": reg["folio"]})
 
 # ------------------------------------------------------------------ Login
 @app.get("/login", response_class=HTMLResponse)
@@ -285,20 +271,19 @@ def ver_factura(request: Request, sid: int):
     return FileResponse(str(ruta))
 
 # --- RUTAS DE REPORTES ---
-@app.get("/panel/memo/{sid}")
-def memo(request: Request, sid: int):
+@app.get("/panel/reporte-depreciacion/{empleado}")
+def reporte_depreciacion(request: Request, empleado: str):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
-    s = db.obtener_solicitud(sid)
-    if not s: raise HTTPException(404)
-    ruta = reportes.generar_memo(s)
+    # Buscamos solicitudes de Depreciacion y Combustible
+    sols = [s for s in db.listar_solicitudes(estado="APROBADO") if (s.get("empleado") or "").lower() == empleado.lower()]
+    ruta = reportes.generar_reporte_depreciacion_pdf(sols, empleado=empleado)
     return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/pdf")
 
 @app.get("/panel/memo-empleado/{empleado}")
 def memo_empleado(request: Request, empleado: str):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     sols = [s for s in (db.listar_solicitudes(estado="APROBADO")) if (s.get("empleado") or "").lower() == empleado.lower()]
-    if not sols: 
-        raise HTTPException(404, "Sin facturas aprobadas para ese empleado")
+    if not sols: raise HTTPException(404, "Sin facturas aprobadas para ese empleado")
     ruta = reportes.generar_memo_pdf(sols, empleado=empleado)
     return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/pdf")
 
@@ -430,22 +415,30 @@ async def api_leer_odometro(archivo: UploadFile = File(...)):
 @app.post("/api/depreciacion")
 async def api_depreciacion(
     empleado: str = Form(...), departamento: str = Form(""), zona: str = Form("tierra_firme"),
-    deducciones: str = Form("0"), tramos: str = Form("[]"), guardar: str = Form("1"),
+    lugares: str = Form(""), tramos: str = Form("[]"), guardar: str = Form("1"),
 ):
     try: lista = json.loads(tramos or "[]")
     except json.JSONDecodeError: lista = []
     if not lista: return JSONResponse({"error": "No se enviaron tramos."}, status_code=400)
-    res = depreciacion.calcular(lista, deducciones=deducciones)
-    resumen = "; ".join(f"{t.get('fecha','')} {t.get('vehiculo','')} {t['lectura_inicial']:.0f}->{t['lectura_final']:.0f} {t['unidad']} ({t['km']:.1f} km)" for t in res["detalle"])
+    
+    res = depreciacion.calcular(lista)
+    
+    # Creamos un resumen que guarde toda la info para el PDF
+    resumen_data = {
+        "lugares": lugares,
+        "tramos": res["detalle"],
+        "total_km": res["total_km"],
+        "total_depreciacion": res["pago_neto"]
+    }
     
     if guardar in ("1", "true", "on"):
         db.asegurar_empleado(empleado, departamento)
         reg = db.crear_solicitud({
             "empleado": empleado, "departamento": departamento, "zona": zona, "categoria": "Depreciacion",
             "negocio": "Depreciacion de vehiculo", "monto": res["pago_neto"], "monto_reembolsable": res["pago_neto"],
-            "limite_aplicado": None, "cumple": True, "estado": "CUMPLE",
-            "motivos": f"{res['num_tramos']} tramo(s), {res['total_km']:.1f} km x L{res['factor_lps_km']}/km",
-            "texto_ocr": resumen,
+            "limite_aplicado": None, "cumple": True, "estado": "APROBADO",
+            "motivos": f"Depreciación registrada correctamente.",
+            "texto_ocr": json.dumps(resumen_data), # Guardamos el JSON con los detalles
         })
         res["folio"] = reg["folio"]
     return JSONResponse(res)
