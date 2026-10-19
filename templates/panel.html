@@ -21,16 +21,19 @@
             <nav class="sidebar-menu">
                 <p class="menu-label">Principal</p>
                 <a href="/panel" class="active"><i class="fas fa-home"></i> Inicio</a>
-                <a href="#"><i class="fas fa-file-invoice-dollar"></i> Facturas</a>
+                
+                <!-- Pestaña de Facturas / Solicitud de Reembolso -->
+                {% if rol == 'admin' %}
+                <a href="/panel"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
+                {% else %}
+                <a href="/?token={{ token }}"><i class="fas fa-file-upload"></i> Solicitud de Reembolso</a>
+                {% endif %}
                 
                 {% if rol == 'admin' %}
                 <p class="menu-label" style="margin-top: 15px;">Administración</p>
                 <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados</a>
                 <a href="/panel/presupuestos"><i class="fas fa-money-check-alt"></i> Presupuestos 2026</a>
                 <a href="#"><i class="fas fa-chart-pie"></i> Reportes</a>
-                {% else %}
-                <p class="menu-label" style="margin-top: 15px;">Acciones</p>
-                <a href="/?token={{ token }}"><i class="fas fa-upload"></i> Subir Factura</a>
                 {% endif %}
             </nav>
             
@@ -41,11 +44,10 @@
 
         <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
-            <!-- TOP NAVBAR -->
             <header class="top-navbar">
                 <div class="search-bar">
                     <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Buscar facturas, empleados...">
+                    <input type="text" placeholder="Buscar factura, empleado...">
                 </div>
                 <div class="user-info">
                     <div class="notification"><i class="fas fa-bell"></i></div>
@@ -66,7 +68,7 @@
                     <p>Aquí tienes el resumen de la actividad del sistema.</p>
                 </div>
 
-                <!-- TARJETAS KPI ESTILO REFERENCIA -->
+                <!-- TARJETAS KPI -->
                 <div class="dashboard-grid">
                     <div class="kpi-card">
                         <div class="kpi-icon green"><i class="fas fa-check-double"></i></div>
@@ -207,7 +209,7 @@
 
     {% if rol == 'admin' %}
     <script>
-        // Gráfico de Barras (Estilo moderno)
+        // Gráfico de Barras (Con datos dinámicos desde Python)
         const ctxBarras = document.getElementById('graficoBarras').getContext('2d');
         new Chart(ctxBarras, {
             type: 'bar',
@@ -215,7 +217,7 @@
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
                 datasets: [{ 
                     label: 'Gastos ($)', 
-                    data: [1200, 1900, 3000, 5000, 2000, 3000], 
+                    data: {{ chart_data | safe }}, // <--- CONECTADO A LA BASE DE DATOS
                     backgroundColor: '#008f39', 
                     borderRadius: 6, 
                     barThickness: 20 
@@ -232,7 +234,7 @@
             }
         });
 
-        // Gráfico de Dona (Estilo moderno)
+        // Gráfico de Dona (Con datos dinámicos desde Python)
         const ctxDona = document.getElementById('graficoDona').getContext('2d');
         new Chart(ctxDona, {
             type: 'doughnut',
