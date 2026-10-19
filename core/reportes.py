@@ -1,177 +1,205 @@
-"""Genera el memorandum y la tabla de liquidacion en el formato real de CENOSA
-(basado en el memo de Mario Urquia, Ejecutivo de Ventas Senior, centro de
-costo V60140).
-
-Salidas:
-  - memorandum (.xlsx) por solicitud o por lote aprobado
-  - tabla de liquidacion (.xlsx) con el detalle de facturas
-"""
+import os
+from fpdf import FPDF
 from datetime import datetime
-from pathlib import Path
+from core.config import BASE_DIR
 
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-from openpyxl.utils import get_column_letter
+# Función para convertir números a letras en español (hasta millones)
+def numero_a_letras(numero):
+    unidades = ["", "UN", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"]
+    decenas = ["", "DIEZ", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"]
+    especiales = {11: "ONCE", 12: "DOCE", 13: "TRECE", 14: "CATORCE", 15: "QUINCE", 16: "DIECISEIS", 17: "DIECISIETE", 18: "DIECIOCHO", 19: "DIECINUEVE", 20: "VEINTE", 21: "VEINTIUNO", 22: "VEINTIDOS", 23: "VEINTITRES", 24: "VEINTICUATRO", 25: "VEINTICINCO", 26: "VEINTISEIS", 27: "VEINTISIETE", 28: "VEINTIOCHO", 29: "VEINTINUEVE"}
+    centenas = ["", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"]
 
-from core.config import REPORTES_DIR, NOMBRE_EMPRESA_DEFAULT
-from core import db
+    if numero == 0: return "CERO"
+    if numero == 100: return "CIEN"
+    
+    texto = ""
+    if numero >= 1000000:
+        millones = numero // 1000000
+        texto += numero_a_letras(millones) + " MILLONES "
+        numero %= 1000000
 
-_AZUL = "1F4E79"
-_GRIS = "D9E1F2"
-_borde = Border(*(Side(style="thin", color="999999"),) * 4)
+    if numero >= 1000:
+        miles = numero // 1000
+        if miles == 1: texto += "MIL "
+        else: texto += numero_a_letras(miles) + " MIL "
+        numero %= 1000
 
+    if numero >= 100:
+        texto += centenas[numero // 100] + " "
+        numero %= 100
 
-def _meses():
-    return ["", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
-            "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
+    if numero > 0:
+        if numero in especiales: texto += especiales[numero]
+        elif numero < 10: texto += unidades[numero]
+        else:
+            d, u = numero // 10, numero % 10
+            texto += decenas[d]
+            if u > 0: texto += " Y " + unidades[u]
+            
+    return texto.strip()
 
+class PDFMemorando(FPDF):
+    def header(self):
+        # Logo (Asegúrate de que la ruta sea correcta a tu carpeta static)
+        logo_path = os.path.join(BASE_DIR, "static", "logo_color.png")
+        if os.path.exists(logo_path):
+            self.image(logo_path, 160, 10, 33)
+        
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("Arial", "I", 8)
+        self.set_text_color(128)
+        self.cell(0, 10, f"Página {self.page_no()}", align="C")
 
-def _fecha_larga(d=None):
-    d = d or datetime.now()
-    return f"San Pedro Sula, {d.day} de {_meses()[d.month]} de {d.year}"
+def generar_memo_pdf(solicitudes, empleado):
+    pdf = PDFMemorando(format="Letter")
+    pdf.add_page()
+    
+    # --- PÁGINA 1: MEMORANDO ---
+    pdf.set_font("Arial", "B", 24)
+    pdf.set_y(40)
+    pdf.cell(0, 10, "Memorando", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(20)
+    
+    pdf.set_font("Arial", "B", 11)
+    # Encabezados del memo
+    pdf.cell(30, 8, "Para:", new_x="RIGHT", new_y="TOP")
+    pdf.set_font("Arial", "", 11)
+    pdf.cell(0, 8, "Lic. Ricardo Jovani Rosales - Gerente Financiero y Negocios", new_x="LMARGIN", new_y="NEXT")
+    
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(30, 8, "De:", new_x="RIGHT", new_y="TOP")
+    pdf.set_font("Arial", "", 11)
+    pdf.cell(0, 8, "Ing. Hugo Barascout - Gerente Comercial", new_x="LMARGIN", new_y="NEXT")
+    
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(30, 8, "CC:", new_x="RIGHT", new_y="TOP")
+    pdf.set_font("Arial", "", 11)
+    pdf.cell(0, 8, "Archivo", new_x="LMARGIN", new_y="NEXT")
+    
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(30, 8, "Fecha:", new_x="RIGHT", new_y="TOP")
+    pdf.set_font("Arial", "", 11)
+    pdf.cell(0, 8, datetime.now().strftime("%d de %B del %Y"), new_x="LMARGIN", new_y="NEXT")
+    
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(30, 8, "Referencia:", new_x="RIGHT", new_y="TOP")
+    pdf.set_font("Arial", "", 11)
+    pdf.cell(0, 8, "Lo Descrito", new_x="LMARGIN", new_y="NEXT")
+    
+    pdf.ln(5)
+    pdf.line(15, pdf.get_y(), 200, pdf.get_y()) # Línea divisoria
+    pdf.ln(10)
 
+    # Calcular totales
+    total_general = sum(float(s['monto']) for s in solicitudes)
+    monto_letras = numero_a_letras(int(total_general))
+    monto_centavos = int(round((total_general - int(total_general)) * 100))
+    
+    # Cuerpo del texto
+    pdf.set_font("Arial", "", 11)
+    texto = (f"Muy atentamente solicito la transferencia bancaria a la cuenta de Banco de Occidente "
+             f"a nombre de {empleado.upper()} por la cantidad de {monto_letras} CON {monto_centavos:02d}/100 "
+             f"LEMPIRAS (L. {total_general:,.2f}) en concepto gastos de alimentación, transporte y hospedaje. "
+             f"Se adjunta tabla con la descripción de lugares visitados y facturas.")
+    pdf.multi_cell(0, 6, texto)
+    pdf.ln(10)
+    pdf.cell(0, 6, "Nota: Imputar a centro de costos V60140.", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(15)
+    pdf.cell(0, 6, "Atentamente,", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(25)
+    
+    # Firmas
+    pdf.line(120, pdf.get_y(), 190, pdf.get_y())
+    pdf.set_font("Arial", "B", 10)
+    pdf.set_x(120)
+    pdf.cell(0, 6, "Vo. Bo. Ing. Edwin Argueta", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_x(120)
+    pdf.cell(0, 6, "Gerente General", new_x="LMARGIN", new_y="NEXT")
 
-def _l(v):
-    try:
-        return f"L {float(v):,.2f}"
-    except (TypeError, ValueError):
-        return "L 0.00"
+    # --- PÁGINA 2: LIQUIDACIÓN DE VIÁTICOS ---
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 14)
+    pdf.cell(0, 10, "LIQUIDACIÓN DE VIÁTICOS", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(0, 8, f"EMPLEADO: {empleado.upper()}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 8, f"TOTAL GASTADO: L. {total_general:,.2f}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
 
+    # Definir anchos de columnas
+    w = [10, 25, 25, 35, 50, 35, 20]
+    headers = ["ITEM", "DIA", "FECHA", "DESCRIPCIÓN", "NOMBRE DEL NEGOCIO", "# FACTURA", "TOTAL"]
 
-def generar_memo(solicitudes, empleado=None, centro_costo="", puesto="",
-                 ruta_salida=None):
-    """Memorandum de reembolso de viaticos en el formato de la empresa."""
-    if isinstance(solicitudes, dict):
-        solicitudes = [solicitudes]
-    emp = empleado or (solicitudes[0].get("empleado") if solicitudes else "")
-    datos_emp = db.buscar_empleado(emp) or {}
-    puesto = puesto or datos_emp.get("puesto", "")
-    centro_costo = centro_costo or datos_emp.get("departamento", "")
+    def draw_header_row():
+        pdf.set_fill_color(0, 143, 57) # Verde Cenosa
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Arial", "B", 9)
+        for i, h in enumerate(headers):
+            pdf.cell(w[i], 8, h, border=1, align="C", fill=True)
+        pdf.ln()
+        pdf.set_text_color(0, 0, 0) # Volver a negro
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Memorandum"
-    ws.sheet_view.showGridLines = False
-    for col, w in zip("ABCDEF", (4, 22, 20, 16, 16, 16)):
-        ws.column_dimensions[col].width = w
+    # Agrupar por categorías
+    categorias = ["Alimentacion", "Hotel", "Asistencia Tecnica", "Representacion", "Mercadeo", "Combustible", "Otros Gastos"]
+    
+    pdf.set_font("Arial", "", 9)
+    
+    for cat in categorias:
+        gastos_cat = [s for s in solicitudes if s.get('categoria') == cat]
+        if not gastos_cat: continue
 
-    tit = Font(bold=True, size=13, color=_AZUL)
-    neg = Font(bold=True)
+        # Título de la categoría
+        pdf.set_fill_color(230, 246, 236) # Verde claro
+        pdf.set_font("Arial", "B", 10)
+        pdf.cell(sum(w), 8, cat.upper(), border=1, align="L", fill=True, new_x="LMARGIN", new_y="NEXT")
+        
+        draw_header_row()
+        
+        pdf.set_font("Arial", "", 9)
+        for i, s in enumerate(gastos_cat):
+            fecha = s.get('fecha_compra', '')
+            try:
+                # Intentar formatear fecha si viene en formato YYYY-MM-DD
+                dt = datetime.strptime(fecha, "%Y-%m-%d")
+                dia_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"][dt.weekday()]
+                fecha_fmt = dt.strftime("%d/%m/%Y")
+            except:
+                dia_semana = "-"
+                fecha_fmt = fecha or "-"
 
-    ws.merge_cells("B1:F1")
-    ws["B1"] = NOMBRE_EMPRESA_DEFAULT
-    ws["B1"].font = tit
-    ws.merge_cells("B2:F2")
-    ws["B2"] = "MEMORANDUM - LIQUIDACION DE VIATICOS"
-    ws["B2"].font = Font(bold=True, size=11)
-    ws.merge_cells("B3:F3")
-    ws["B3"] = _fecha_larga()
-    ws["B3"].font = Font(italic=True, size=9)
+            pdf.cell(w[0], 7, str(i+1), border=1, align="C")
+            pdf.cell(w[1], 7, dia_semana, border=1, align="C")
+            pdf.cell(w[2], 7, fecha_fmt, border=1, align="C")
+            pdf.cell(w[3], 7, s.get('categoria', 'VARIOS'), border=1, align="C")
+            pdf.cell(w[4], 7, (s.get('negocio') or '-')[:25], border=1, align="L")
+            pdf.cell(w[5], 7, (s.get('num_factura') or '-')[:15], border=1, align="C")
+            pdf.cell(w[6], 7, f"L {float(s['monto']):,.2f}", border=1, align="R")
+            pdf.ln()
 
-    fila = 5
-    enc = [("Para:", "Departamento de Contabilidad"),
-           ("De:", emp),
-           ("Puesto:", puesto or "-"),
-           ("Centro de costo:", centro_costo or "-"),
-           ("Asunto:", "Reembolso / liquidacion de gastos de viaticos")]
-    for et, val in enc:
-        ws[f"B{fila}"] = et
-        ws[f"B{fila}"].font = neg
-        ws.merge_cells(f"C{fila}:F{fila}")
-        ws[f"C{fila}"] = val
-        fila += 1
+    # Fila final de Total
+    pdf.set_fill_color(0, 143, 57)
+    pdf.set_text_color(255, 255, 255)
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(sum(w[:-1]), 10, "TOTAL GASTADO EN LA SEMANA", border=1, align="R", fill=True)
+    pdf.cell(w[-1], 10, f"L {total_general:,.2f}", border=1, align="R", fill=True)
+    pdf.ln()
 
-    fila += 1
-    cols = ["Folio", "Fecha", "Categoria", "Negocio / proveedor",
-            "Monto factura", "Reembolsable"]
-    for i, c in enumerate(cols):
-        cel = ws.cell(row=fila, column=2 + i, value=c)
-        cel.font = Font(bold=True, color="FFFFFF")
-        cel.fill = PatternFill("solid", fgColor=_AZUL)
-        cel.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        cel.border = _borde
-    fila += 1
+    # Guardar
+    from core.config import REPORTES_DIR
+    nombre_archivo = f"Memo_{empleado.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+    ruta_salida = os.path.join(REPORTES_DIR, nombre_archivo)
+    pdf.output(ruta_salida)
+    
+    return ruta_salida
 
-    total_f = total_r = 0.0
-    for idx, s in enumerate(solicitudes):
-        valores = [s.get("folio", ""), s.get("fecha_compra", "") or "",
-                   (s.get("categoria") or "").title(), s.get("negocio") or "-",
-                   float(s.get("monto") or 0), float(s.get("monto_reembolsable") or 0)]
-        total_f += valores[4]
-        total_r += valores[5]
-        for i, v in enumerate(valores):
-            cel = ws.cell(row=fila, column=2 + i, value=v)
-            cel.border = _borde
-            if idx % 2:
-                cel.fill = PatternFill("solid", fgColor=_GRIS)
-            if i >= 4:
-                cel.number_format = '"L" #,##0.00'
-                cel.alignment = Alignment(horizontal="right")
-        fila += 1
-
-    ws.cell(row=fila, column=2, value="TOTAL").font = neg
-    ws.merge_cells(start_row=fila, start_column=2, end_row=fila, end_column=4)
-    tf = ws.cell(row=fila, column=5, value=total_f)
-    tf.number_format = '"L" #,##0.00'
-    tf.font = neg
-    tr = ws.cell(row=fila, column=6, value=total_r)
-    tr.number_format = '"L" #,##0.00'
-    tr.font = neg
-    tr.fill = PatternFill("solid", fgColor=_GRIS)
-    fila += 3
-
-    ws.merge_cells(f"B{fila}:F{fila}")
-    ws[f"B{fila}"] = f"Total a reembolsar: {_l(total_r)}"
-    ws[f"B{fila}"].font = Font(bold=True, size=11, color=_AZUL)
-    fila += 4
-
-    for col, txt in (("C", "Solicitado por"), ("E", "Autorizado por")):
-        ws[f"{col}{fila}"] = "_______________________"
-        ws[f"{col}{fila+1}"] = txt
-        ws[f"{col}{fila+1}"].font = Font(size=9)
-
-    ruta = Path(ruta_salida) if ruta_salida else Path(REPORTES_DIR) / (
-        f"memo_{(emp or 'empleado').replace(' ', '_')}_"
-        f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
-    ruta.parent.mkdir(parents=True, exist_ok=True)
-    wb.save(str(ruta))
-    return str(ruta)
-
-
-def generar_tabla(solicitudes, ruta_salida=None):
-    """Tabla/planilla de liquidacion con el detalle completo de cada factura."""
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Liquidacion"
-    cols = ["Folio", "Empleado", "Depto/Centro", "Zona", "Categoria", "RTN",
-            "CAI", "Fecha", "Negocio", "Monto", "Limite", "Reembolsable",
-            "Estado", "Observaciones"]
-    for i, c in enumerate(cols):
-        cel = ws.cell(row=1, column=1 + i, value=c)
-        cel.font = Font(bold=True, color="FFFFFF")
-        cel.fill = PatternFill("solid", fgColor=_AZUL)
-        cel.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        cel.border = _borde
-    ws.freeze_panes = "A2"
-
-    for r, s in enumerate(solicitudes, start=2):
-        vals = [s.get("folio"), s.get("empleado"), s.get("departamento"),
-                s.get("zona"), (s.get("categoria") or "").title(), s.get("rtn"),
-                s.get("cai"), s.get("fecha_compra"), s.get("negocio"),
-                float(s.get("monto") or 0), float(s.get("limite_aplicado") or 0),
-                float(s.get("monto_reembolsable") or 0), s.get("estado"),
-                s.get("observaciones") or s.get("motivos") or ""]
-        for i, v in enumerate(vals):
-            cel = ws.cell(row=r, column=1 + i, value=v)
-            cel.border = _borde
-            if i in (9, 10, 11):
-                cel.number_format = '"L" #,##0.00'
-    anchos = [16, 24, 16, 14, 16, 16, 24, 12, 22, 14, 14, 14, 14, 30]
-    for i, w in enumerate(anchos):
-        ws.column_dimensions[get_column_letter(1 + i)].width = w
-
-    ruta = Path(ruta_salida) if ruta_salida else Path(REPORTES_DIR) / (
-        f"liquidacion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx")
-    ruta.parent.mkdir(parents=True, exist_ok=True)
-    wb.save(str(ruta))
-    return str(ruta)
+# Dejamos un generar_memo genérico por retrocompatibilidad
+def generar_memo(solicitud_o_lista, empleado=None):
+    if isinstance(solicitud_o_lista, dict):
+        solicitudes = [solicitud_o_lista]
+        if not empleado: empleado = solicitudes[0].get('empleado', 'Empleado')
+    else:
+        solicitudes = solicitud_o_lista
+        if not empleado: empleado = solicitudes[0].get('empleado', 'Empleado') if solicitudes else 'Empleado'
+    
+    return generar_memo_pdf(solicitudes, empleado)
