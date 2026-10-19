@@ -7,28 +7,15 @@
     <link rel="stylesheet" href="/static/estilos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Estilos para la tabla */
         .tabla-tramos input, .tabla-tramos select {
-            width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;
-            font-family: inherit; font-size: 0.9rem; box-sizing: border-box;
+            width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;
+            font-family: inherit; font-size: 0.85rem; box-sizing: border-box;
         }
-        .tabla-tramos th { background-color: #f8fafc; color: #475569; font-size: 0.8rem; padding: 12px; text-align: center; }
-        .tabla-tramos td { padding: 10px; vertical-align: middle; }
-        
-        /* Estilos para el desglose de pago */
-        .resumen-pago {
-            background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;
-            padding: 25px; display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
-        }
-        .resumen-row { 
-            display: flex; justify-content: space-between; width: 100%; max-width: 400px; 
-            font-size: 1rem; color: #475569; 
-        }
-        .resumen-row strong { color: #1e293b; }
-        .resumen-total { 
-            font-size: 1.5rem; font-weight: bold; color: var(--verde-cenosa); 
-            border-top: 2px solid #cbd5e1; padding-top: 15px; margin-top: 5px; 
-        }
+        .tabla-tramos th { background-color: #f8fafc; color: #475569; font-size: 0.75rem; padding: 10px; text-align: center; }
+        .tabla-tramos td { padding: 8px; vertical-align: middle; }
+        .resumen-pago { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        .resumen-row { display: flex; justify-content: space-between; width: 100%; max-width: 400px; font-size: 0.95rem; color: #475569; }
+        .resumen-total { font-size: 1.4rem; font-weight: bold; color: var(--verde-cenosa); border-top: 2px solid #e2e8f0; padding-top: 10px; margin-top: 5px; }
     </style>
 </head>
 <body class="dashboard-body" style="background: var(--bg-body);">
@@ -43,19 +30,19 @@
         </div>
     </header>
 
-    <div class="content-wrapper" style="max-width: 1100px; padding-top: 40px;">
-        <div class="card" style="background: white; border-radius: 16px; padding: 30px; box-shadow: var(--shadow-md);">
+    <div class="content-wrapper" style="max-width: 1200px; padding-top: 30px;">
+        <div class="card" style="background: white; border-radius: 16px; padding: 25px; box-shadow: var(--shadow-md);">
             
-            <div class="dashboard-header" style="margin-bottom: 25px;">
+            <div class="dashboard-header" style="margin-bottom: 20px;">
                 <h2 style="color: var(--verde-cenosa);">Calcula tu depreciación por kilometraje</h2>
-                <p>Agrega tus tramos. Puedes subir una foto o PDF de tu odómetro y el sistema intentará leer el número por ti. <strong>Factor actual: L {{ factor }} por km.</strong></p>
+                <p>Agrega tus tramos. El factor actual es de <strong>L {{ factor }} por km</strong>.</p>
             </div>
 
             <form id="form-depreciacion">
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0;">
                     <div>
-                        <label style="font-weight: 600; font-size: 0.85rem; color: #475569; margin-bottom: 5px; display: block;">Tu nombre</label>
-                        <select id="emp-nombre" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Tu nombre</label>
+                        <select id="emp-nombre" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px;">
                             <option value="">Selecciona...</option>
                             {% for e in empleados %}
                             <option value="{{ e }}">{{ e }}</option>
@@ -63,8 +50,8 @@
                         </select>
                     </div>
                     <div>
-                        <label style="font-weight: 600; font-size: 0.85rem; color: #475569; margin-bottom: 5px; display: block;">Centro de Costo</label>
-                        <select id="emp-depto" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Centro de Costo</label>
+                        <select id="emp-depto" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px;">
                             <option value="">Selecciona...</option>
                             {% for cc in centros_costos %}
                             <option value="{{ cc }}">{{ cc }}</option>
@@ -72,33 +59,34 @@
                         </select>
                     </div>
                     <div>
-                        <label style="font-weight: 600; font-size: 0.85rem; color: #475569; margin-bottom: 5px; display: block;">Zona</label>
-                        <select id="emp-zona" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Zona</label>
+                        <select id="emp-zona" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px;">
                             {% for z in zonas %}
                             <option value="{{ z }}">{{ z }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div>
-                        <label style="font-weight: 600; font-size: 0.85rem; color: #475569; margin-bottom: 5px; display: block;">Deducciones (L) <i class="fas fa-info-circle" title="Adelantos o descuentos previos"></i></label>
-                        <input type="number" id="emp-deducciones" value="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: #475569;">Lugares Visitados (General)</label>
+                        <input type="text" id="emp-lugares" placeholder="Ej. SPS, Villanueva, Baracoa" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px;">
                     </div>
                 </div>
 
-                <h3 style="margin-top: 0; margin-bottom: 15px; color: var(--text-main); border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Tramos Recorridos</h3>
+                <h3 style="margin-top: 20px; margin-bottom: 10px; color: var(--text-main); border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Tramos Recorridos</h3>
                 
                 <div class="table-responsive" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto;">
-                    <table id="tabla-tramos" class="tabla-tramos" style="width: 100%; border-collapse: collapse; min-width: 900px;">
+                    <table id="tabla-tramos" class="tabla-tramos" style="width: 100%; border-collapse: collapse; min-width: 1000px;">
                         <thead>
                             <tr>
-                                <th style="width: 12%;">Fecha</th>
-                                <th style="width: 15%;">Vehículo / Placa</th>
-                                <th style="width: 12%;">Unidad</th>
-                                <th style="width: 12%;">Lectura Inicial</th>
-                                <th style="width: 12%;">Lectura Final</th>
-                                <th style="width: 12%;">Distancia</th>
-                                <th style="width: 15%;">Foto / PDF Odómetro</th>
-                                <th style="width: 10%;">Quitar</th>
+                                <th style="width: 10%;">Fecha</th>
+                                <th style="width: 15%;">Punto de Partida</th>
+                                <th style="width: 15%;">Destino</th>
+                                <th style="width: 10%;">Vehículo / Placa</th>
+                                <th style="width: 10%;">Km Inicial</th>
+                                <th style="width: 10%;">Km Final</th>
+                                <th style="width: 10%;">Distancia</th>
+                                <th style="width: 15%;">Foto Odómetro</th>
+                                <th style="width: 5%;">Quitar</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -108,14 +96,13 @@
                 </div>
 
                 <div style="margin-top: 15px;">
-                    <button type="button" class="btn-action" onclick="agregarTramo()" style="background: #e2e8f0; color: var(--text-main); padding: 10px 20px; border: none; cursor: pointer;">
+                    <button type="button" class="btn-action" onclick="agregarTramo()" style="background: #e2e8f0; color: var(--text-main); padding: 8px 15px; border: none; cursor: pointer;">
                         <i class="fas fa-plus"></i> Agregar otro tramo
                     </button>
                 </div>
 
-                <!-- DESGLOSE DEL PAGO DETALLADO -->
-                <div class="resumen-pago" style="margin-top: 30px;">
-                    <div class="resumen-row" style="background: #e0f2fe; padding: 10px 15px; border-radius: 8px; color: #0284c7; font-weight: bold; font-size: 1.1rem;">
+                <div class="resumen-pago" style="margin-top: 25px;">
+                    <div class="resumen-row" style="background: #e0f2fe; padding: 10px; border-radius: 8px; color: #0284c7; font-weight: bold;">
                         <span><i class="fas fa-road"></i> Total Kilómetros a Pagar:</span>
                         <strong id="lbl-km" style="color: #0284c7;">0.00 km</strong>
                     </div>
@@ -127,22 +114,18 @@
                         <span>Subtotal por Kilometraje:</span>
                         <strong id="lbl-subtotal">L 0.00</strong>
                     </div>
-                    <div class="resumen-row" style="color: #dc2626;">
-                        <span>(-) Deducciones aplicadas:</span>
-                        <strong id="lbl-deducciones">L 0.00</strong>
-                    </div>
                     <div class="resumen-row resumen-total">
-                        <span>Total Neto a Pagar:</span>
+                        <span>Total Depreciación:</span>
                         <span id="total-pagar">L 0.00</span>
                     </div>
                 </div>
 
-                <button type="submit" class="btn-entrar" style="margin-top: 25px; width: 100%; border-radius: 8px; padding: 15px; font-size: 1.1rem;">
-                    <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Enviar y Registrar Solicitud
+                <button type="submit" class="btn-entrar" style="margin-top: 20px; width: 100%; border-radius: 8px; padding: 15px; font-size: 1.1rem;">
+                    <i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Enviar y Registrar Depreciación
                 </button>
             </form>
             
-            <div id="resultado-dep" style="margin-top: 25px; display: none;"></div>
+            <div id="resultado-dep" style="margin-top: 20px; display: none;"></div>
         </div>
     </div>
 
@@ -155,26 +138,22 @@
             const tbody = document.querySelector('#tabla-tramos tbody');
             const tr = document.createElement('tr');
             tr.id = `tramo-${idContador}`;
-            tr.style.borderBottom = "1px solid #e2e8f0";
             tr.innerHTML = `
                 <td><input type="date" class="in-fecha" required></td>
-                <td><input type="text" class="in-vehiculo" placeholder="Ej. ABC-1234" required></td>
-                <td>
-                    <select class="in-unidad" onchange="calcularTotal()">
-                        <option value="km">Kilómetros</option>
-                        <option value="mi">Millas</option>
-                    </select>
-                </td>
+                <td><input type="text" class="in-partida" placeholder="Ej. SPS" required></td>
+                <td><input type="text" class="in-destino" placeholder="Ej. Villanueva" required></td>
+                <td><input type="text" class="in-vehiculo" placeholder="Placa" required></td>
                 <td><input type="number" class="in-inicial" value="0" required oninput="calcularTotal()"></td>
                 <td><input type="number" class="in-final" value="0" required oninput="calcularTotal()"></td>
                 <td class="txt-distancia" style="font-weight: bold; color: var(--verde-cenosa); text-align: center;">0.00 km</td>
                 <td style="text-align: center;">
-                    <input type="file" id="file-${idContador}" accept="image/*,.pdf" style="display: none;" onchange="procesarOdometro(this, ${idContador})">
-                    <button type="button" class="btn-action" onclick="document.getElementById('file-${idContador}').click()" style="background: #e0f2fe; color: #0284c7; border: none; cursor: pointer; padding: 8px; width: 100%;" title="Subir Foto/PDF para leer kilometraje">
+                    <input type="file" id="file-${idContador}" accept="image/*" style="display: none;" onchange="mostrarNombreArchivo(this, ${idContador})">
+                    <button type="button" class="btn-action" onclick="document.getElementById('file-${idContador}').click()" style="background: #e0f2fe; color: #0284c7; border: none; cursor: pointer; padding: 6px; width: 100%;">
                         <i class="fas fa-camera"></i> Subir
                     </button>
+                    <span id="name-${idContador}" style="font-size: 0.7rem; color: #16a34a; display: block; margin-top: 3px;"></span>
                 </td>
-                <td style="text-align: center;"><button type="button" onclick="eliminarTramo(${idContador})" class="btn-action" style="background: #fee2e2; color: #dc2626; border: none; cursor: pointer; padding: 8px;"><i class="fas fa-trash"></i></button></td>
+                <td style="text-align: center;"><button type="button" onclick="eliminarTramo(${idContador})" class="btn-action" style="background: #fee2e2; color: #dc2626; border: none; cursor: pointer; padding: 6px;"><i class="fas fa-trash"></i></button></td>
             `;
             tbody.appendChild(tr);
         }
@@ -184,35 +163,9 @@
             calcularTotal();
         }
 
-        async function procesarOdometro(input, id) {
-            if (!input.files || input.files.length === 0) return;
-            const file = input.files[0];
-            const tr = document.getElementById(`tramo-${id}`);
-            const btn = tr.querySelector('.btn-action');
-            
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Leyendo...';
-            btn.disabled = true;
-
-            const formData = new FormData();
-            formData.append('archivo', file);
-
-            try {
-                const res = await fetch('/api/leer-odometro', { method: 'POST', body: formData });
-                const data = await res.json();
-                
-                if (data.valor) {
-                    tr.querySelector('.in-final').value = data.valor;
-                    calcularTotal();
-                    alert(`✅ Kilometraje detectado automáticamente: ${data.valor}`);
-                } else {
-                    alert("⚠️ No se pudo detectar el número del odómetro. Por favor, ingrésalo manualmente.");
-                }
-            } catch (e) {
-                alert("Error al procesar el archivo. Intenta de nuevo.");
-            } finally {
-                btn.innerHTML = '<i class="fas fa-check"></i> Leído';
-                setTimeout(() => { btn.innerHTML = originalHtml; btn.disabled = false; }, 3000);
+        function mostrarNombreArchivo(input, id) {
+            if (input.files && input.files[0]) {
+                document.getElementById(`name-${id}`).innerText = input.files[0].name;
             }
         }
 
@@ -221,31 +174,21 @@
             document.querySelectorAll('#tabla-tramos tbody tr').forEach(tr => {
                 const inicial = parseFloat(tr.querySelector('.in-inicial').value) || 0;
                 const final = parseFloat(tr.querySelector('.in-final').value) || 0;
-                const unidad = tr.querySelector('.in-unidad').value;
                 
                 let dist = final - inicial;
                 if (dist < 0) dist = 0;
-                if (unidad === 'mi') dist = dist * 1.60934; // Conversión a km
                 
                 tr.querySelector('.txt-distancia').innerText = `${dist.toFixed(2)} km`;
                 totalKm += dist;
             });
             
-            const deducciones = parseFloat(document.getElementById('emp-deducciones').value) || 0;
             const subtotal = totalKm * FACTOR;
-            let totalPagar = subtotal - deducciones;
-            if (totalPagar < 0) totalPagar = 0;
             
-            // Actualizar el desglose visual con los KMs
             document.getElementById('lbl-km').innerText = `${totalKm.toFixed(2)} km`;
             document.getElementById('lbl-subtotal').innerText = `L ${subtotal.toFixed(2)}`;
-            document.getElementById('lbl-deducciones').innerText = `L ${deducciones.toFixed(2)}`;
-            document.getElementById('total-pagar').innerText = `L ${totalPagar.toFixed(2)}`;
+            document.getElementById('total-pagar').innerText = `L ${subtotal.toFixed(2)}`;
         }
 
-        document.getElementById('emp-deducciones').addEventListener('input', calcularTotal);
-
-        // Agregar un tramo por defecto al cargar la página
         agregarTramo();
 
         document.getElementById('form-depreciacion').addEventListener('submit', async (e) => {
@@ -254,23 +197,21 @@
             const empleado = document.getElementById('emp-nombre').value;
             const departamento = document.getElementById('emp-depto').value;
             const zona = document.getElementById('emp-zona').value;
-            const deducciones = document.getElementById('emp-deducciones').value;
+            const lugares = document.getElementById('emp-lugares').value;
             
             const tramos = [];
             document.querySelectorAll('#tabla-tramos tbody tr').forEach(tr => {
                 tramos.push({
                     fecha: tr.querySelector('.in-fecha').value,
+                    partida: tr.querySelector('.in-partida').value,
+                    destino: tr.querySelector('.in-destino').value,
                     vehiculo: tr.querySelector('.in-vehiculo').value,
-                    unidad: tr.querySelector('.in-unidad').value,
                     lectura_inicial: parseFloat(tr.querySelector('.in-inicial').value) || 0,
                     lectura_final: parseFloat(tr.querySelector('.in-final').value) || 0
                 });
             });
 
-            if (tramos.length === 0) {
-                alert("Debes agregar al menos un tramo.");
-                return;
-            }
+            if (tramos.length === 0) { alert("Debes agregar al menos un tramo."); return; }
 
             const btn = e.target.querySelector('button[type="submit"]');
             const resDiv = document.getElementById('resultado-dep');
@@ -282,7 +223,7 @@
             formData.append('empleado', empleado);
             formData.append('departamento', departamento);
             formData.append('zona', zona);
-            formData.append('deducciones', deducciones);
+            formData.append('lugares', lugares);
             formData.append('tramos', JSON.stringify(tramos));
             formData.append('guardar', '1');
 
@@ -292,19 +233,18 @@
                 
                 resDiv.style.display = 'block';
                 if (data.error) {
-                    resDiv.innerHTML = `<div style="background: #fee2e2; color: #dc2626; padding: 20px; border-radius: 12px; text-align: center;">${data.error}</div>`;
+                    resDiv.innerHTML = `<div style="background: #fee2e2; color: #dc2626; padding: 15px; border-radius: 12px; text-align: center;">${data.error}</div>`;
                 } else {
-                    resDiv.innerHTML = `<div style="background: #dcfce7; color: #16a34a; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #bbf7d0;">
+                    resDiv.innerHTML = `<div style="background: #dcfce7; color: #16a34a; padding: 15px; border-radius: 12px; text-align: center; border: 1px solid #bbf7d0;">
                         <h3><i class="fas fa-check-circle"></i> ¡Registro Exitoso!</h3>
-                        <p style="font-size: 1.1rem;">Pago Neto: <strong>L ${data.pago_neto}</strong></p>
-                        <p style="font-size: 0.9rem;">Folio: <strong>${data.folio}</strong></p>
+                        <p style="font-size: 1.1rem;">Total: <strong>L ${data.pago_neto}</strong></p>
                     </div>`;
                 }
             } catch (error) {
-                resDiv.innerHTML = `<div style="background: #fee2e2; color: #dc2626; padding: 20px; border-radius: 12px; text-align: center;">Error de conexión.</div>`;
+                resDiv.innerHTML = `<div style="background: #fee2e2; color: #dc2626; padding: 15px; border-radius: 12px; text-align: center;">Error de conexión.</div>`;
                 resDiv.style.display = 'block';
             } finally {
-                btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Enviar y Registrar Solicitud';
+                btn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Enviar y Registrar Depreciación';
                 btn.disabled = false;
             }
         });
