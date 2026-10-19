@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso - Viáticos CENOSA</title>
-    <!-- Enlace a tu hoja de estilos -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+    <!-- Enlace corregido para FastAPI -->
+    <link rel="stylesheet" href="/static/estilos.css">
 </head>
 <body class="login-body">
     <!-- Barra superior verde -->
@@ -20,6 +20,13 @@
         <div class="login-card">
             <h2>Acceso de la encargada</h2>
             
+            <!-- Aquí mostramos el mensaje de error si la contraseña es incorrecta -->
+            {% if error %}
+            <div class="msg err" style="background: #fde8e6; color: #c0392b; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; text-align: center;">
+                {{ error }}
+            </div>
+            {% endif %}
+
             <form method="POST" action="/login">
                 <div class="form-group">
                     <label for="usuario">Usuario</label>
@@ -35,6 +42,7 @@
             </form>
 
             <div class="login-links">
+                <!-- Enlace corregido también -->
                 <a href="/?token=cenosa2026">← Ir al portal de empleados</a>
             </div>
         </div>
