@@ -99,16 +99,22 @@
                 <div class="charts-grid">
                     <div class="chart-card">
                         <div class="chart-header"><h3>Gastos por Mes</h3></div>
-                        <canvas id="graficoBarras"></canvas>
+                        <!-- ENVOLVEMOS EL CANVAS EN UN WRAPPER CON ALTURA FIJA -->
+                        <div class="chart-wrapper">
+                            <canvas id="graficoBarras"></canvas>
+                        </div>
                     </div>
                     <div class="chart-card">
                         <div class="chart-header"><h3>Estatus de Facturas</h3></div>
-                        <div style="height: 250px; display: flex; justify-content: center;"><canvas id="graficoDona"></canvas></div>
+                        <!-- ENVOLVEMOS EL CANVAS EN UN WRAPPER CON ALTURA FIJA -->
+                        <div class="chart-wrapper">
+                            <canvas id="graficoDona"></canvas>
+                        </div>
                     </div>
                 </div>
 
                 {% else %}
-                <!-- VISTA PARA EMPLEADOS (Muestra su presupuesto asignado) -->
+                <!-- VISTA PARA EMPLEADOS -->
                 <div class="dashboard-header">
                     <h2>Hola, {{ usuario }}</h2>
                     <p>Este es el resumen de tus solicitudes de viáticos.</p>
