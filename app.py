@@ -19,7 +19,6 @@ from core.config import (BASE_DIR, FACTURAS_DIR, REPORTES_DIR, ZONAS,
 CATEGORIAS = ["Alimentacion", "Hotel", "Asistencia Tecnica", "Representacion",
               "Mercadeo", "Combustible", "Depreciacion", "Otros Gastos"]
 
-# Función para obtener los centros de costo desde la base de datos (o los por defecto)
 def get_centros_costos():
     c_str = db.obtener_config("centros_costos", "")
     if c_str:
@@ -27,7 +26,6 @@ def get_centros_costos():
             return json.loads(c_str)
         except Exception:
             pass
-    # Lista por defecto si la base de datos está vacía
     return [
         "Ventas V60140", "Administración", "Planta / Producción",
         "Logística / Bodega", "Recursos Humanos", "Contabilidad / Finanzas",
@@ -57,6 +55,32 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 db.init_db()
 seed.sembrar()
+
+# --- EVENTO DE ARRANQUE: CARGA AUTOMÁTICA DE PRESUPUESTOS 2026 ---
+@app.on_event("startup")
+def cargar_presupuestos_al_iniciar():
+    # Verificamos si ya hay límites guardados. Si no hay, los inyectamos.
+    try:
+        limites = db.listar_limites()
+        if len(limites) < 5: # Si hay muy pocos, es porque la base está vacía o nueva
+            datos_2026 = {
+                "Cindy Artola": 5000.00, "Mario Doblado": 5000.00, "Maria Josee Coto": 11000.00, 
+                "Christopher Midence": 17000.00, "Carlos Humberto Mejia": 35000.00, "Eduardo Lopez Lopez": 15000.00, 
+                "Luis Fernando Ponce": 33000.00, "Olga Elizabeth Osorto": 35000.00, "Eduardo Rene Mejia Rodriguez": 35000.00, 
+                "Steven Garcia": 33000.00, "Marco Smith": 33000.00, "Yeni Yamilet Castellanos": 25000.00, 
+                "Jose Samuel Lopez": 30000.00, "Linda de Jesus Notasco": 35000.00, "Oscar Ivan Sierra Linares": 24000.00, 
+                "Mario Jose Urquia": 35000.00, "Joan Jorge Pineda": 35000.00, "Rafael Alberto Perez": 10000.00, 
+                "Martha Julissa Perla (Caja Chica)": 10000.00, "Martha Julissa Perla (Gastos Mercadeo)": 10000.00, 
+                "Nolvin Roel Rivera": 15000.00, "Carlos Enrique Jallu": 10000.00, "Beverly Yasmira Rivera": 25000.00, 
+                "Renato Miguel Gonzales": 35000.00, "Edwin Geovani Samayoa": 35000.00, "Cindy Julissa Guevara": 20000.00, 
+                "Manuel Alejandro Reyes": 30000.00, "Kevin Wilfredo Villela": 35000.00, "Saul Edgardo Herrera": 35000.00, 
+                "Luis Gerardo de Jesus": 30000.00
+            }
+            for nombre, monto in datos_2026.items():
+                db.guardar_limite("empleado", nombre, monto)
+            print("✅ Presupuestos 2026 cargados automáticamente en la base de datos.")
+    except Exception as e:
+        print(f"⚠️ Error al cargar presupuestos: {e}")
 
 def _es_admin(request: Request) -> bool:
     return bool(request.session.get("admin")) and request.session.get("rol") == "admin"
@@ -327,7 +351,6 @@ def guardar_config(request: Request, rtn_empresa: str = Form(""), nombre_empresa
     depreciacion.guardar_parametros(factor_lps_km or depreciacion.obtener_parametros()["factor_lps_km"], factor_conversion or depreciacion.obtener_parametros()["factor_conversion"], bool(restar_deducciones))
     return RedirectResponse("/panel/empleados?msg=cfg", status_code=303)
 
-# --- RUTAS PARA AGREGAR/ELIMINAR CENTROS DE COSTO ---
 @app.post("/panel/config/centros/agregar")
 def agregar_centro(request: Request, centro: str = Form(...)):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
@@ -364,17 +387,6 @@ async def presupuestos_guardar(request: Request):
             try: db.guardar_limite("empleado", emp_nombre, float(value) if value.strip() else 0.0)
             except ValueError: pass
     return RedirectResponse("/panel/presupuestos?msg=ok", status_code=303)
-
-@app.get("/admin/cargar-presupuestos-2026")
-def cargar_datos_masivos(request: Request):
-    if not _es_admin(request):
-        return HTMLResponse("<h3>No autorizado.</h3>", status_code=403)
-    datos_2026 = {
-        "Cindy Artola": 5000.00, "Mario Doblado": 5000.00, "Maria Josee Coto": 11000.00, "Christopher Midence": 17000.00, "Carlos Humberto Mejia": 35000.00, "Eduardo Lopez Lopez": 15000.00, "Luis Fernando Ponce": 33000.00, "Olga Elizabeth Osorto": 35000.00, "Eduardo Rene Mejia Rodriguez": 35000.00, "Steven Garcia": 33000.00, "Marco Smith": 33000.00, "Yeni Yamilet Castellanos": 25000.00, "Jose Samuel Lopez": 30000.00, "Linda de Jesus Notasco": 35000.00, "Oscar Ivan Sierra Linares": 24000.00, "Mario Jose Urquia": 35000.00, "Joan Jorge Pineda": 35000.00, "Rafael Alberto Perez": 10000.00, "Martha Julissa Perla (Caja Chica)": 10000.00, "Martha Julissa Perla (Gastos Mercadeo)": 10000.00, "Nolvin Roel Rivera": 15000.00, "Carlos Enrique Jallu": 10000.00, "Beverly Yasmira Rivera": 25000.00, "Renato Miguel Gonzales": 35000.00, "Edwin Geovani Samayoa": 35000.00, "Cindy Julissa Guevara": 20000.00, "Manuel Alejandro Reyes": 30000.00, "Kevin Wilfredo Villela": 35000.00, "Saul Edgardo Herrera": 35000.00, "Luis Gerardo de Jesus": 30000.00
-    }
-    for nombre, monto in datos_2026.items():
-        db.guardar_limite("empleado", nombre, monto)
-    return HTMLResponse(f"<script>alert('Se cargaron {len(datos_2026)} presupuestos correctamente'); window.location.href='/panel/presupuestos';</script>")
 
 @app.get("/salud")
 def salud():
