@@ -10,14 +10,12 @@
 <body class="dashboard-body">
 
     <div class="dashboard-container">
-        <!-- SIDEBAR -->
+        <!-- MENÚ LATERAL -->
         <aside class="sidebar">
-            <a href="/panel/limites"><i class="fas fa-sliders-h"></i> Límites por Puesto</a>
             <div class="sidebar-brand">
                 <img src="/static/logo_color.png" alt="Logo" style="height: 45px;">
                 <h2>Sistema Viáticos</h2>
             </div>
-            
             <nav class="sidebar-menu">
                 <p class="menu-label">Principal</p>
                 <a href="/panel"><i class="fas fa-home"></i> Inicio</a>
@@ -26,9 +24,9 @@
                 <p class="menu-label" style="margin-top: 15px;">Administración</p>
                 <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados y Config</a>
                 <a href="/panel/presupuestos"><i class="fas fa-money-check-alt"></i> Presupuestos 2026</a>
+                <a href="/panel/limites"><i class="fas fa-sliders-h"></i> Límites por Puesto</a>
                 <a href="/panel/reportes" class="active"><i class="fas fa-chart-pie"></i> Reportes</a>
             </nav>
-            
             <div class="sidebar-footer">
                 <a href="/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
             </div>
@@ -104,7 +102,6 @@
                 alert("Por favor selecciona un empleado primero.");
                 return;
             }
-            // Redirigimos a la ruta del backend que genera el Excel
             window.location.href = `/panel/memo-empleado/${encodeURIComponent(emp)}`;
         }
     </script>
