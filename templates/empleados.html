@@ -57,7 +57,6 @@
                 </div>
                 {% endif %}
 
-                <!-- CONFIGURACIÓN DE LA EMPRESA -->
                 <div class="card" style="background: white; border-radius: 16px; padding: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-bottom: 25px;">
                     <h3 style="margin-top: 0; color: var(--text-main); margin-bottom: 20px;">Configuración de la Empresa</h3>
                     <form method="POST" action="/panel/config">
@@ -83,18 +82,17 @@
                     </form>
                 </div>
 
-                <!-- AGREGAR EMPLEADO -->
                 <div class="card" style="background: white; border-radius: 16px; padding: 25px; box-shadow: 0 8px 24px rgba(0,0,0,0.04); margin-bottom: 25px;">
                     <h3 style="margin-top: 0; color: var(--text-main); margin-bottom: 20px;">Agregar Empleado</h3>
                     <form method="POST" action="/panel/empleados/agregar">
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
                             <div class="form-group">
                                 <label>Nombre Completo</label>
-                                <input type="text" name="nombre" required>
+                                <input type="text" name="nombre" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                             </div>
                             <div class="form-group">
                                 <label>Puesto</label>
-                                <select name="puesto">
+                                <select name="puesto" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                                     <option value="">(Sin definir)</option>
                                     {% for p in orden_puestos %}
                                     <option value="{{ p }}">{{ p }}</option>
@@ -102,19 +100,24 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Departamento / Centro de costo</label>
-                                <input type="text" name="departamento">
+                                <label>Centro de Costo</label>
+                                <!-- MENÚ DESPLEGABLE PARA ADMIN -->
+                                <select name="departamento" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                    <option value="">Selecciona...</option>
+                                    {% for cc in centros_costos %}
+                                    <option value="{{ cc }}">{{ cc }}</option>
+                                    {% endfor %}
+                                </select>
                             </div>
                             <div class="form-group">
                                 <label>Límite diario propio (opcional)</label>
-                                <input type="number" step="0.01" name="limite" placeholder="Ej. 620">
+                                <input type="number" step="0.01" name="limite" placeholder="Ej. 620" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
                             </div>
                         </div>
                         <button type="submit" class="btn-action" style="background: var(--verde-cenosa); color: white; margin-top: 15px;">Agregar Empleado</button>
                     </form>
                 </div>
 
-                <!-- LISTA DE EMPLEADOS -->
                 <div class="table-card">
                     <div class="table-header">
                         <h3>Lista de Empleados</h3>
