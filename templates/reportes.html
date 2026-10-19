@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes - Viáticos CENOSA</title>
+    <link rel="stylesheet" href="/static/estilos.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="dashboard-body">
+
+    <div class="dashboard-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <img src="/static/logo_color.png" alt="Logo" style="height: 45px;">
+                <h2>Sistema Viáticos</h2>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <p class="menu-label">Principal</p>
+                <a href="/panel"><i class="fas fa-home"></i> Inicio</a>
+                <a href="/panel/facturas"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
+                
+                <p class="menu-label" style="margin-top: 15px;">Administración</p>
+                <a href="/panel/empleados"><i class="fas fa-users"></i> Empleados y Config</a>
+                <a href="/panel/presupuestos"><i class="fas fa-money-check-alt"></i> Presupuestos 2026</a>
+                <a href="/panel/reportes" class="active"><i class="fas fa-chart-pie"></i> Reportes</a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <a href="/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="main-content">
+            <header class="top-navbar">
+                <div class="user-info" style="margin-left: auto;">
+                    <div class="user-profile">
+                        <div class="text">
+                            <span class="name">{{ usuario }}</span>
+                            <span class="role">Administrador</span>
+                        </div>
+                        <div class="avatar"><i class="fas fa-user"></i></div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+                <div class="dashboard-header">
+                    <h2>Descarga de Reportes</h2>
+                    <p>Genera archivos en Excel listos para contabilidad o para realizar los pagos.</p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
+                    
+                    <!-- TARJETA 1: TABLA GENERAL -->
+                    <div class="card" style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 8px 24px rgba(0,0,0,0.04); text-align: center;">
+                        <div style="width: 70px; height: 70px; background: #e6f6ec; color: var(--verde-cenosa); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2rem; margin: 0 auto 20px;">
+                            <i class="fas fa-file-excel"></i>
+                        </div>
+                        <h3 style="margin-top: 0; color: var(--text-main);">Reporte General de Viáticos</h3>
+                        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 25px;">
+                            Descarga un archivo Excel con todas las facturas y solicitudes registradas en el sistema (Aprobadas, Pendientes y Rechazadas).
+                        </p>
+                        <a href="/panel/tabla" class="btn-action" style="background: var(--verde-cenosa); color: white; padding: 12px 24px; font-size: 1rem; display: inline-block; width: 100%; border-radius: 8px;">
+                            <i class="fas fa-download" style="margin-right: 8px;"></i> Descargar Excel General
+                        </a>
+                    </div>
+
+                    <!-- TARJETA 2: MEMO POR EMPLEADO -->
+                    <div class="card" style="background: white; border-radius: 16px; padding: 30px; box-shadow: 0 8px 24px rgba(0,0,0,0.04); text-align: center;">
+                        <div style="width: 70px; height: 70px; background: #e0f2fe; color: #0284c7; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 2rem; margin: 0 auto 20px;">
+                            <i class="fas fa-file-invoice"></i>
+                        </div>
+                        <h3 style="margin-top: 0; color: var(--text-main);">Memo de Pago por Empleado</h3>
+                        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px;">
+                            Selecciona a un empleado para generar su memo de pago en Excel con todas sus facturas **aprobadas**.
+                        </p>
+                        
+                        <select id="select-empleado" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; font-family: inherit;">
+                            <option value="">Selecciona un empleado...</option>
+                            {% for emp in empleados %}
+                            <option value="{{ emp.nombre }}">{{ emp.nombre }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <button onclick="descargarMemo()" class="btn-action" style="background: #0284c7; color: white; padding: 12px 24px; font-size: 1rem; display: inline-block; width: 100%; border-radius: 8px; border: none; cursor: pointer;">
+                            <i class="fas fa-download" style="margin-right: 8px;"></i> Descargar Memo
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function descargarMemo() {
+            const emp = document.getElementById('select-empleado').value;
+            if (!emp) {
+                alert("Por favor selecciona un empleado primero.");
+                return;
+            }
+            // Redirigimos a la ruta del backend que genera el Excel
+            window.location.href = `/panel/memo-empleado/${encodeURIComponent(emp)}`;
+        }
+    </script>
+</body>
+</html>
