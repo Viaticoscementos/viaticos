@@ -6,6 +6,29 @@
     <title>Depreciación de Vehículo - CENOSA</title>
     <link rel="stylesheet" href="/static/estilos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Estilos especiales para que los inputs de la tabla se vean grandes y cómodos */
+        .tabla-tramos input, .tabla-tramos select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+        .tabla-tramos th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-size: 0.8rem;
+            padding: 12px;
+            text-align: center;
+        }
+        .tabla-tramos td {
+            padding: 10px;
+            vertical-align: middle;
+        }
+    </style>
 </head>
 <body class="dashboard-body" style="background: var(--bg-body);">
 
@@ -14,24 +37,24 @@
         <img src="/static/logo_color.png" alt="Logo" style="height: 40px; background: white; padding: 5px; border-radius: 8px;">
         <h1 style="margin: 0; font-size: 1.2rem;">Depreciación de Vehículo</h1>
         <div style="margin-left: auto;">
-            <a href="/panel" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white;">
+            <a href="/panel" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white; padding: 8px 15px;">
                 <i class="fas fa-arrow-left"></i> Volver al menú
             </a>
         </div>
     </header>
 
-    <div class="content-wrapper" style="max-width: 1000px; padding-top: 40px;">
+    <div class="content-wrapper" style="max-width: 1100px; padding-top: 40px;">
         <div class="card" style="background: white; border-radius: 16px; padding: 30px; box-shadow: var(--shadow-md);">
             
-            <div class="dashboard-header" style="margin-bottom: 20px;">
-                <h2>Calcula tu depreciación por kilometraje</h2>
+            <div class="dashboard-header" style="margin-bottom: 25px;">
+                <h2 style="color: var(--verde-cenosa);">Calcula tu depreciación por kilometraje</h2>
                 <p>Agrega un tramo por cada día o cada vehículo que uses. El sistema convierte todo a km y suma para darte el pago total. <strong>Factor actual: L {{ factor }} por km.</strong></p>
             </div>
 
             <form id="form-depreciacion">
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
                     <div class="form-group">
-                        <label>Tu nombre</label>
+                        <label style="font-weight: 600; font-size: 0.85rem; color: #475569; margin-bottom: 5px; display: block;">Tu nombre</label>
                         <select id="emp-nombre" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
                             <option value="">Selecciona...</option>
                             {% for e in empleados %}
@@ -40,7 +63,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Centro de Costo</label>
+                        <label style="font-weight: 600; font-size: 0.85rem; color: #475569; margin-bottom: 5px; display: block;">Centro de Costo</label>
                         <select id="emp-depto" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
                             <option value="">Selecciona...</option>
                             {% for cc in centros_costos %}
@@ -49,7 +72,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Zona</label>
+                        <label style="font-weight: 600; font-size: 0.85rem; color: #475569; margin-bottom: 5px; display: block;">Zona</label>
                         <select id="emp-zona" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
                             {% for z in zonas %}
                             <option value="{{ z }}">{{ z }}</option>
@@ -57,24 +80,24 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Deducciones (L)</label>
+                        <label style="font-weight: 600; font-size: 0.85rem; color: #475569; margin-bottom: 5px; display: block;">Deducciones (L)</label>
                         <input type="number" id="emp-deducciones" value="0" step="0.01" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
                     </div>
                 </div>
 
-                <h3 style="margin-top: 30px; margin-bottom: 15px; color: var(--text-main); border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Tramos Recorridos</h3>
+                <h3 style="margin-top: 0; margin-bottom: 15px; color: var(--text-main); border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">Tramos Recorridos</h3>
                 
-                <div class="table-responsive">
-                    <table id="tabla-tramos">
+                <div class="table-responsive" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                    <table id="tabla-tramos" class="tabla-tramos" style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr>
-                                <th>Fecha</th>
-                                <th>Vehículo / Placa</th>
-                                <th>Unidad</th>
-                                <th>Lectura Inicial</th>
-                                <th>Lectura Final</th>
-                                <th>Distancia</th>
-                                <th>Acción</th>
+                                <th style="width: 15%;">Fecha</th>
+                                <th style="width: 20%;">Vehículo / Placa</th>
+                                <th style="width: 15%;">Unidad</th>
+                                <th style="width: 15%;">Lectura Inicial</th>
+                                <th style="width: 15%;">Lectura Final</th>
+                                <th style="width: 12%;">Distancia</th>
+                                <th style="width: 8%;">Acción</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -83,14 +106,14 @@
                     </table>
                 </div>
 
-                <div style="margin-top: 15px; display: flex; gap: 15px;">
-                    <button type="button" class="btn-action" onclick="agregarTramo()" style="background: #e2e8f0; color: var(--text-main);">
-                        <i class="fas fa-plus"></i> Agregar tramo
+                <div style="margin-top: 15px;">
+                    <button type="button" class="btn-action" onclick="agregarTramo()" style="background: #e2e8f0; color: var(--text-main); padding: 10px 20px; border: none; cursor: pointer;">
+                        <i class="fas fa-plus"></i> Agregar otro tramo
                     </button>
                 </div>
 
-                <div style="margin-top: 30px; text-align: right; background: #f8fafc; padding: 20px; border-radius: 12px;">
-                    <h3 style="margin: 0; color: var(--verde-cenosa);">Total Estimado a Pagar: <span id="total-pagar" style="font-size: 1.5rem;">L 0.00</span></h3>
+                <div style="margin-top: 30px; text-align: right; background: #f0fdf4; padding: 25px; border-radius: 12px; border: 1px solid #bbf7d0;">
+                    <h3 style="margin: 0; color: #166534;">Total Estimado a Pagar: <span id="total-pagar" style="font-size: 1.8rem;">L 0.00</span></h3>
                 </div>
 
                 <button type="submit" class="btn-entrar" style="margin-top: 25px; width: 100%; border-radius: 8px; padding: 15px; font-size: 1.1rem;">
@@ -111,19 +134,20 @@
             const tbody = document.querySelector('#tabla-tramos tbody');
             const tr = document.createElement('tr');
             tr.id = `tramo-${idContador}`;
+            tr.style.borderBottom = "1px solid #e2e8f0";
             tr.innerHTML = `
-                <td><input type="date" class="in-fecha" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"></td>
-                <td><input type="text" class="in-vehiculo" placeholder="Placa" required style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"></td>
+                <td><input type="date" class="in-fecha" required></td>
+                <td><input type="text" class="in-vehiculo" placeholder="Ej. ABC-1234" required></td>
                 <td>
-                    <select class="in-unidad" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    <select class="in-unidad">
                         <option value="km">Kilómetros</option>
                         <option value="mi">Millas</option>
                     </select>
                 </td>
-                <td><input type="number" class="in-inicial" value="0" required oninput="calcularFila(this)" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"></td>
-                <td><input type="number" class="in-final" value="0" required oninput="calcularFila(this)" style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"></td>
-                <td class="txt-distancia" style="font-weight: bold; color: var(--verde-cenosa);">0 km</td>
-                <td><button type="button" onclick="eliminarTramo(${idContador})" class="btn-action" style="background: #fee2e2; color: #dc2626; border: none; cursor: pointer;"><i class="fas fa-trash"></i></button></td>
+                <td><input type="number" class="in-inicial" value="0" required oninput="calcularFila(this)"></td>
+                <td><input type="number" class="in-final" value="0" required oninput="calcularFila(this)"></td>
+                <td class="txt-distancia" style="font-weight: bold; color: var(--verde-cenosa); text-align: center;">0 km</td>
+                <td style="text-align: center;"><button type="button" onclick="eliminarTramo(${idContador})" class="btn-action" style="background: #fee2e2; color: #dc2626; border: none; cursor: pointer; padding: 8px;"><i class="fas fa-trash"></i></button></td>
             `;
             tbody.appendChild(tr);
         }
