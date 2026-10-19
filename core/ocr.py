@@ -87,7 +87,7 @@ def analizar(ruta_archivo):
         "texto_ocr": texto
     }
 
-# --- LECTURA DE ODÓMETRO EXTREMA (PARA PANTALLAS LED) ---
+# --- LECTURA DE ODÓMETRO VERSIÓN 4.0 (ADAPTATIVA) ---
 def leer_odometro(ruta_imagen):
     try:
         # 1. Leer imagen
@@ -98,43 +98,33 @@ def leer_odometro(ruta_imagen):
         # 2. Convertir a escala de grises
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # 3. Recortar el 10% de los bordes para eliminar el texto "mi" o el marco del tablero
-        h, w = gray.shape
-        gray = gray[int(h*0.1):int(h*0.9), int(w*0.1):int(w*0.9)]
-
-        # 4. Ampliar la imagen (x4) para que los números sean gigantes
+        # 3. Ampliar la imagen (x4)
         gray = cv2.resize(gray, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
 
-        # 5. Aplicar filtro de ruido (suaviza el resplandor LED)
+        # 4. Filtro para quitar el ruido de la pantalla (desenfoque medio)
         gray = cv2.medianBlur(gray, 5)
 
-        # 6. Umbralización: Los LEDs son muy brillantes, cortamos a partir de 150
-        # Esto deja los números en blanco puro y el fondo en negro puro
-        _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+        # 5. UMBRALIZACIÓN ADAPTATIVA (La magia)
+        # En lugar de un valor fijo, calcula el brillo por bloques de la imagen
+        thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                       cv2.THRESH_BINARY_INV, 21, 5)
 
-        # 7. Rellenar huecos (Morfología): Los números de 7 segmentos tienen cortes. 
-        # Esto los hace sólidos para que Tesseract no los confunda.
-        kernel = np.ones((5, 5), np.uint8)
+        # 6. Rellenar huecos (Morfología)
+        kernel = np.ones((3, 3), np.uint8)
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
 
-        # 8. Invertir (fondo blanco, números negros)
-        thresh = cv2.bitwise_not(thresh)
+        # 7. Agregar borde blanco gigante para que Tesseract se centre en el texto
+        thresh = cv2.copyMakeBorder(thresh, 50, 50, 50, 50, cv2.BORDER_CONSTANT, value=[255, 255, 255])
 
-        # 9. Agregar borde blanco
-        thresh = cv2.copyMakeBorder(thresh, 30, 30, 30, 30, cv2.BORDER_CONSTANT, value=[255, 255, 255])
-
-        # 10. Configurar Tesseract
-        # PSM 7: Trata la imagen como una sola línea de texto.
-        # Whitelist: SOLO busca números (ignora la 'm' y la 'i' de "mi")
+        # 8. Configurar Tesseract
         config = r'--oem 3 --psm 7 -c tessedit_char_whitelist=0123456789'
         texto_extraido = pytesseract.image_to_string(thresh, config=config)
 
-        # 11. Limpiar y buscar el número
+        # 9. Limpiar y buscar el número
         texto_limpio = texto_extraido.strip().replace(" ", "")
         numeros = re.findall(r'\d{4,8}', texto_limpio)
 
         if numeros:
-            # Tomamos el número más largo que encontró
             valor_final = max(numeros, key=len)
             return {"valor": valor_final, "texto": texto_extraido}
         else:
