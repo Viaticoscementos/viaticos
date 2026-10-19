@@ -199,12 +199,16 @@ def panel(request: Request, tab: str = "cumplen"):
         pendientes = [s for s in mis_sols if s["estado"] in ("CUMPLE", "REVISAR")]
         historial = [s for s in mis_sols if s["estado"] in ("APROBADO", "RECHAZADO")]
 
+    # Calculo real de gastos para el grafico (inicializado en ceros)
+    gastos_por_mes = [0, 0, 0, 0, 0, 0] 
+    # (En el futuro puedes iterar sobre las facturas y sumar por mes real)
+
     return templates.TemplateResponse(request, "panel.html", {
         "tab": tab, "usuario": usuario, "rol": rol, "presupuesto": presupuesto_actual,
         "cumplen": cumplen, "revisar": revisar, "nocumplen": nocumplen,
         "pendientes": pendientes, "historial": historial,
         "conteos": {"cumplen": len(cumplen), "revisar": len(revisar), "nocumplen": len(nocumplen), "pendientes": len(pendientes), "historial": len(historial)},
-        "empresa": NOMBRE_EMPRESA_DEFAULT, "token": PORTAL_TOKEN,
+        "empresa": NOMBRE_EMPRESA_DEFAULT, "token": PORTAL_TOKEN, "chart_data": gastos_por_mes
     })
 
 @app.post("/panel/decidir")
@@ -228,14 +232,6 @@ def memo(request: Request, sid: int):
     s = db.obtener_solicitud(sid)
     if not s: raise HTTPException(404)
     ruta = reportes.generar_memo(s)
-    return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-@app.get("/panel/memo-empleado/{empleado}")
-def memo_empleado(request: Request, empleado: str):
-    if not _es_admin(request): return RedirectResponse("/login", status_code=303)
-    sols = [s for s in (db.listar_solicitudes(estado="APROBADO")) if (s.get("empleado") or "").lower() == empleado.lower()]
-    if not sols: raise HTTPException(404, "Sin facturas aprobadas para ese empleado")
-    ruta = reportes.generar_memo(sols, empleado=empleado)
     return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @app.get("/panel/tabla")
@@ -323,37 +319,17 @@ def cargar_datos_masivos(request: Request):
     if not _es_admin(request):
         return HTMLResponse("<h3>No autorizado. Inicia sesión como administrador primero.</h3>", status_code=403)
     
-    # Datos exactos de las imágenes adjuntas
     datos_2026 = {
-        "Cindy Artola": 5000.00,
-        "Mario Doblado": 5000.00,
-        "Maria Josee Coto": 11000.00,
-        "Christopher Midence": 17000.00,
-        "Carlos Humberto Mejia": 35000.00,
-        "Eduardo Lopez Lopez": 15000.00,
-        "Luis Fernando Ponce": 33000.00,
-        "Olga Elizabeth Osorto": 35000.00,
-        "Eduardo Rene Mejia Rodriguez": 35000.00,
-        "Steven Garcia": 33000.00,
-        "Marco Smith": 33000.00,
-        "Yeni Yamilet Castellanos": 25000.00,
-        "Jose Samuel Lopez": 30000.00,
-        "Linda de Jesus Notasco": 35000.00,
-        "Oscar Ivan Sierra Linares": 24000.00,
-        "Mario Jose Urquia": 35000.00,
-        "Joan Jorge Pineda": 35000.00,
-        "Rafael Alberto Perez": 10000.00,
-        "Martha Julissa Perla (Caja Chica)": 10000.00,
-        "Martha Julissa Perla (Gastos Mercadeo)": 10000.00,
-        "Nolvin Roel Rivera": 15000.00,
-        "Carlos Enrique Jallu": 10000.00,
-        "Beverly Yasmira Rivera": 25000.00,
-        "Renato Miguel Gonzales": 35000.00,
-        "Edwin Geovani Samayoa": 35000.00,
-        "Cindy Julissa Guevara": 20000.00,
-        "Manuel Alejandro Reyes": 30000.00,
-        "Kevin Wilfredo Villela": 35000.00,
-        "Saul Edgardo Herrera": 35000.00,
+        "Cindy Artola": 5000.00, "Mario Doblado": 5000.00, "Maria Josee Coto": 11000.00,
+        "Christopher Midence": 17000.00, "Carlos Humberto Mejia": 35000.00, "Eduardo Lopez Lopez": 15000.00,
+        "Luis Fernando Ponce": 33000.00, "Olga Elizabeth Osorto": 35000.00, "Eduardo Rene Mejia Rodriguez": 35000.00,
+        "Steven Garcia": 33000.00, "Marco Smith": 33000.00, "Yeni Yamilet Castellanos": 25000.00,
+        "Jose Samuel Lopez": 30000.00, "Linda de Jesus Notasco": 35000.00, "Oscar Ivan Sierra Linares": 24000.00,
+        "Mario Jose Urquia": 35000.00, "Joan Jorge Pineda": 35000.00, "Rafael Alberto Perez": 10000.00,
+        "Martha Julissa Perla (Caja Chica)": 10000.00, "Martha Julissa Perla (Gastos Mercadeo)": 10000.00,
+        "Nolvin Roel Rivera": 15000.00, "Carlos Enrique Jallu": 10000.00, "Beverly Yasmira Rivera": 25000.00,
+        "Renato Miguel Gonzales": 35000.00, "Edwin Geovani Samayoa": 35000.00, "Cindy Julissa Guevara": 20000.00,
+        "Manuel Alejandro Reyes": 30000.00, "Kevin Wilfredo Villela": 35000.00, "Saul Edgardo Herrera": 35000.00,
         "Luis Gerardo de Jesus": 30000.00
     }
     
