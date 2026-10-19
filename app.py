@@ -83,7 +83,6 @@ def portal(request: Request, token: str = ""):
         "orden_puestos": ORDEN_PUESTOS
     })
 
-# --- RUTA MODIFICADA PARA ACEPTAR MÚLTIPLES ARCHIVOS ---
 @app.post("/api/validar")
 async def api_validar(
     request: Request, 
@@ -107,9 +106,8 @@ async def api_validar(
         
         nombres_guardados.append(nombre)
         if not primer_archivo_path:
-            primer_archivo_path = str(destino) # Usamos el primer archivo para el OCR
+            primer_archivo_path = str(destino)
 
-    # Hacemos el OCR sobre el primer archivo o el PDF consolidado
     datos = {"rtn": "", "cai": "", "fecha_compra": "", "monto": 0.0, "texto_ocr": ""}
     if primer_archivo_path:
         try:
@@ -132,8 +130,6 @@ async def api_validar(
     veredicto = validacion.validar(datos, datos.get("texto_ocr", ""))
 
     db.asegurar_empleado(empleado, departamento)
-    
-    # Guardamos la lista de nombres separados por coma en el campo 'archivo'
     archivos_str = ",".join(nombres_guardados)
     
     reg = db.crear_solicitud({
@@ -169,7 +165,7 @@ def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/login", status_code=303)
 
-# ------------------------------------------------------------------ Panel Admin y Empleado
+# ------------------------------------------------------------------ Panel
 @app.get("/panel", response_class=HTMLResponse)
 def panel(request: Request, tab: str = "cumplen"):
     usuario = request.session.get("admin")
@@ -253,26 +249,36 @@ def ver_factura(request: Request, sid: int):
     s = db.obtener_solicitud(sid)
     if not s or not s.get("archivo"): raise HTTPException(404)
     
-    # Si hay varios archivos guardados (separados por coma), mostramos el primero
     primer_archivo = s["archivo"].split(",")[0]
     ruta = Path(FACTURAS_DIR) / primer_archivo
     if not ruta.exists(): raise HTTPException(404)
     return FileResponse(str(ruta))
 
+# --- RUTAS DE REPORTES (RESTAURADAS) ---
 @app.get("/panel/memo/{sid}")
 def memo(request: Request, sid: int):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     s = db.obtener_solicitud(sid)
     if not s: raise HTTPException(404)
     ruta = reportes.generar_memo(s)
-    return FileResponse(str(ruta), filename=Path(ruta).name)
+    return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+@app.get("/panel/memo-empleado/{empleado}")
+def memo_empleado(request: Request, empleado: str):
+    if not _es_admin(request): return RedirectResponse("/login", status_code=303)
+    sols = [s for s in (db.listar_solicitudes(estado="APROBADO")) if (s.get("empleado") or "").lower() == empleado.lower()]
+    if not sols: 
+        raise HTTPException(404, "Sin facturas aprobadas para ese empleado")
+    ruta = reportes.generar_memo(sols, empleado=empleado)
+    return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 @app.get("/panel/tabla")
 def tabla(request: Request, estado: str = ""):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     sols = db.listar_solicitudes(estado=estado or None)
     ruta = reportes.generar_tabla(sols)
-    return FileResponse(str(ruta), filename=Path(ruta).name)
+    return FileResponse(str(ruta), filename=Path(ruta).name, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+# ---------------------------------------
 
 @app.get("/panel/empleados", response_class=HTMLResponse)
 def empleados_form(request: Request, msg: str = ""):
