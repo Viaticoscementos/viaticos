@@ -6,10 +6,14 @@
     <title>Dashboard - Viáticos CENOSA</title>
     <link rel="stylesheet" href="/static/estilos.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Librería para los gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="dashboard-body">
+
+    <!-- Protegemos la variable para que no dé error si no hay sesión -->
+    {% set usuario_actual = request.session.get('usuario', 'Usuario') if request and request.session else 'Usuario' %}
+    <!-- Suponemos que en tu app.py guardas el rol en la sesión (ej. 'admin' o 'empleado') -->
+    {% set es_admin = request.session.get('rol') == 'admin' if request and request.session else True %}
 
     <div class="dashboard-container">
         <!-- MENÚ LATERAL -->
@@ -20,9 +24,15 @@
             </div>
             <nav class="sidebar-menu">
                 <a href="/panel" class="active"><i class="fas fa-home"></i> Inicio</a>
-                <a href="#"><i class="fas fa-file-invoice-dollar"></i> Facturas</a>
+                
+                {% if es_admin %}
+                <a href="#"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
                 <a href="#"><i class="fas fa-users"></i> Empleados</a>
                 <a href="#"><i class="fas fa-chart-pie"></i> Reportes</a>
+                {% else %}
+                <a href="#"><i class="fas fa-upload"></i> Subir Factura</a>
+                <a href="#"><i class="fas fa-list"></i> Mis Solicitudes</a>
+                {% endif %}
             </nav>
             <div class="sidebar-footer">
                 <a href="/logout"><i class="fas fa-sign-out-alt"></i> Cerrar Sesión</a>
@@ -35,49 +45,34 @@
             <header class="top-navbar">
                 <div class="search-bar">
                     <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Buscar factura o empleado...">
+                    <input type="text" placeholder="Buscar...">
                 </div>
                 <div class="user-info">
-                    <!-- Corregido: request.session para FastAPI -->
-                    <span>Hola, <strong>{{ request.session.get('admin_user', 'Encargada') }}</strong></span>
+                    <span>Hola, <strong>{{ usuario_actual }}</strong> {% if es_admin %}(Admin){% else %}(Empleado){% endif %}</span>
                     <div class="avatar"><i class="fas fa-user-tie"></i></div>
                 </div>
             </header>
 
-            <!-- Área de Tarjetas y Gráficos -->
+            <!-- VISTA PARA ADMINISTRADORES -->
+            {% if es_admin %}
             <div class="dashboard-grid">
-                
-                <!-- Tarjetas Resumen -->
                 <div class="kpi-card">
                     <div class="kpi-icon green"><i class="fas fa-check-circle"></i></div>
-                    <div class="kpi-data">
-                        <h3>Facturas Aprobadas</h3>
-                        <p>0</p> <!-- Aquí luego pondremos la variable de Python -->
-                    </div>
+                    <div class="kpi-data"><h3>Aprobadas</h3><p>0</p></div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-icon orange"><i class="fas fa-clock"></i></div>
-                    <div class="kpi-data">
-                        <h3>Pendientes</h3>
-                        <p>0</p>
-                    </div>
+                    <div class="kpi-data"><h3>Pendientes</h3><p>0</p></div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-icon red"><i class="fas fa-times-circle"></i></div>
-                    <div class="kpi-data">
-                        <h3>Rechazadas</h3>
-                        <p>0</p>
-                    </div>
+                    <div class="kpi-data"><h3>Rechazadas</h3><p>0</p></div>
                 </div>
                 <div class="kpi-card">
                     <div class="kpi-icon blue"><i class="fas fa-wallet"></i></div>
-                    <div class="kpi-data">
-                        <h3>Total Viáticos</h3>
-                        <p>$0.00</p>
-                    </div>
+                    <div class="kpi-data"><h3>Total Viáticos</h3><p>$0.00</p></div>
                 </div>
 
-                <!-- Contenedores de Gráficos -->
                 <div class="chart-card">
                     <h3>Gastos por Mes</h3>
                     <canvas id="graficoBarras"></canvas>
@@ -87,14 +82,14 @@
                     <canvas id="graficoDona"></canvas>
                 </div>
             </div>
+            {% endif %}
 
-            <!-- Sección de Tabla de Facturas -->
+            <!-- VISTA PARA EMPLEADOS (O para todos, tabla general) -->
             <div class="table-section">
                 <div class="table-header">
-                    <h3>Últimas Facturas Recibidas</h3>
+                    <h3>{% if es_admin %}Últimas Facturas Recibidas{% else %}Mis Facturas Recientes{% endif %}</h3>
                 </div>
                 
-                <!-- Pestañas originales (estilizadas) -->
                 <div class="tabs modern-tabs">
                     <a href="#" class="act">Cumplen</a>
                     <a href="#">No cumplen</a>
@@ -102,7 +97,6 @@
                     <a href="#">Historial</a>
                 </div>
 
-                <!-- Tabla de Datos -->
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -122,14 +116,6 @@
                                 <td><span class="pill CUMPLE">Cumple</span></td>
                                 <td><button class="btn sm">Ver</button></td>
                             </tr>
-                            <tr>
-                                <td>María López</td>
-                                <td>Ayer, 04:15 PM</td>
-                                <td>$850.00</td>
-                                <td><span class="pill REVISAR">Revisar</span></td>
-                                <td><button class="btn sm">Ver</button></td>
-                            </tr>
-                            <!-- Aquí iría tu bucle {% for factura in facturas %} -->
                         </tbody>
                     </table>
                 </div>
@@ -137,38 +123,29 @@
         </main>
     </div>
 
-    <!-- Script para inicializar los gráficos -->
+    {% if es_admin %}
     <script>
-        // Gráfico de Barras
+        // Solo cargamos los gráficos si es admin
         const ctxBarras = document.getElementById('graficoBarras').getContext('2d');
         new Chart(ctxBarras, {
             type: 'bar',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
-                datasets: [{
-                    label: 'Gastos ($)',
-                    data: [1200, 1900, 3000, 5000, 2000, 3000],
-                    backgroundColor: '#008f39',
-                    borderRadius: 6
-                }]
+                datasets: [{ label: 'Gastos ($)', data: [1200, 1900, 3000, 5000, 2000, 3000], backgroundColor: '#008f39', borderRadius: 6 }]
             },
             options: { responsive: true, plugins: { legend: { display: false } } }
         });
 
-        // Gráfico de Dona
         const ctxDona = document.getElementById('graficoDona').getContext('2d');
         new Chart(ctxDona, {
             type: 'doughnut',
             data: {
                 labels: ['Aprobadas', 'Pendientes', 'Rechazadas'],
-                datasets: [{
-                    data: [12, 5, 2],
-                    backgroundColor: ['#008f39', '#f59e0b', '#ef4444'],
-                    borderWidth: 0
-                }]
+                datasets: [{ data: [12, 5, 2], backgroundColor: ['#008f39', '#f59e0b', '#ef4444'], borderWidth: 0 }]
             },
             options: { responsive: true, cutout: '70%' }
         });
     </script>
+    {% endif %}
 </body>
 </html>
