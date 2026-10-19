@@ -199,9 +199,7 @@ def panel(request: Request, tab: str = "cumplen"):
         pendientes = [s for s in mis_sols if s["estado"] in ("CUMPLE", "REVISAR")]
         historial = [s for s in mis_sols if s["estado"] in ("APROBADO", "RECHAZADO")]
 
-    # Calculo real de gastos para el grafico (inicializado en ceros)
     gastos_por_mes = [0, 0, 0, 0, 0, 0] 
-    # (En el futuro puedes iterar sobre las facturas y sumar por mes real)
 
     return templates.TemplateResponse(request, "panel.html", {
         "tab": tab, "usuario": usuario, "rol": rol, "presupuesto": presupuesto_actual,
@@ -211,11 +209,29 @@ def panel(request: Request, tab: str = "cumplen"):
         "empresa": NOMBRE_EMPRESA_DEFAULT, "token": PORTAL_TOKEN, "chart_data": gastos_por_mes
     })
 
+@app.get("/panel/facturas", response_class=HTMLResponse)
+def panel_facturas(request: Request, tab: str = "pendientes"):
+    if not _es_admin(request): return RedirectResponse("/login", status_code=303)
+    
+    cumplen = db.listar_solicitudes(estado="CUMPLE")
+    revisar = db.listar_solicitudes(estado="REVISAR")
+    nocumplen = db.listar_solicitudes(estado="NO_CUMPLE")
+    pendientes = cumplen + revisar
+    historial = (db.listar_solicitudes(estado="APROBADO") + db.listar_solicitudes(estado="RECHAZADO"))
+
+    return templates.TemplateResponse(request, "facturas.html", {
+        "tab": tab, "usuario": request.session.get("admin"), "rol": "admin",
+        "cumplen": cumplen, "revisar": revisar, "nocumplen": nocumplen,
+        "pendientes": pendientes, "historial": historial,
+        "conteos": {"cumplen": len(cumplen), "revisar": len(revisar), "nocumplen": len(nocumplen), "pendientes": len(pendientes), "historial": len(historial)},
+        "empresa": NOMBRE_EMPRESA_DEFAULT, "token": PORTAL_TOKEN
+    })
+
 @app.post("/panel/decidir")
 def decidir(request: Request, sid: int = Form(...), decision: str = Form(...), observaciones: str = Form("")):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     db.decidir_solicitud(sid, decision.upper(), observaciones)
-    return RedirectResponse("/panel?tab=historial", status_code=303)
+    return RedirectResponse("/panel/facturas?tab=historial", status_code=303)
 
 @app.get("/panel/factura/{sid}")
 def ver_factura(request: Request, sid: int):
@@ -248,7 +264,7 @@ def empleados_form(request: Request, msg: str = ""):
     dep = depreciacion.obtener_parametros()
     return templates.TemplateResponse(request, "empleados.html", {
         "empleados": empleados_ordenados(), "orden_puestos": ORDEN_PUESTOS, "limites": db.listar_limites(),
-        "zonas": ZONAS, "cfg": cfg, "dep": dep, "msg": msg, "rol": "admin"
+        "zonas": ZONAS, "cfg": cfg, "dep": dep, "msg": msg, "rol": "admin", "usuario": request.session.get("admin")
     })
 
 @app.post("/panel/empleados/agregar")
@@ -300,7 +316,7 @@ def presupuestos_form(request: Request, msg: str = ""):
     if not _es_admin(request): return RedirectResponse("/login", status_code=303)
     emps = empleados_ordenados()
     for e in emps: e["limite_actual"] = db.obtener_limite("empleado", e["nombre"]) or 0.0
-    return templates.TemplateResponse(request, "presupuestos.html", {"empleados": emps, "msg": msg, "empresa": NOMBRE_EMPRESA_DEFAULT, "rol": "admin"})
+    return templates.TemplateResponse(request, "presupuestos.html", {"empleados": emps, "msg": msg, "empresa": NOMBRE_EMPRESA_DEFAULT, "rol": "admin", "usuario": request.session.get("admin")})
 
 @app.post("/panel/presupuestos/guardar")
 async def presupuestos_guardar(request: Request):
@@ -313,40 +329,16 @@ async def presupuestos_guardar(request: Request):
             except ValueError: pass
     return RedirectResponse("/panel/presupuestos?msg=ok", status_code=303)
 
-# ------------------------------------------------------------------ RUTA MÁGICA PARA CARGAR LOS DATOS DEL EXCEL
 @app.get("/admin/cargar-presupuestos-2026")
 def cargar_datos_masivos(request: Request):
     if not _es_admin(request):
-        return HTMLResponse("<h3>No autorizado. Inicia sesión como administrador primero.</h3>", status_code=403)
-    
+        return HTMLResponse("<h3>No autorizado.</h3>", status_code=403)
     datos_2026 = {
-        "Cindy Artola": 5000.00, "Mario Doblado": 5000.00, "Maria Josee Coto": 11000.00,
-        "Christopher Midence": 17000.00, "Carlos Humberto Mejia": 35000.00, "Eduardo Lopez Lopez": 15000.00,
-        "Luis Fernando Ponce": 33000.00, "Olga Elizabeth Osorto": 35000.00, "Eduardo Rene Mejia Rodriguez": 35000.00,
-        "Steven Garcia": 33000.00, "Marco Smith": 33000.00, "Yeni Yamilet Castellanos": 25000.00,
-        "Jose Samuel Lopez": 30000.00, "Linda de Jesus Notasco": 35000.00, "Oscar Ivan Sierra Linares": 24000.00,
-        "Mario Jose Urquia": 35000.00, "Joan Jorge Pineda": 35000.00, "Rafael Alberto Perez": 10000.00,
-        "Martha Julissa Perla (Caja Chica)": 10000.00, "Martha Julissa Perla (Gastos Mercadeo)": 10000.00,
-        "Nolvin Roel Rivera": 15000.00, "Carlos Enrique Jallu": 10000.00, "Beverly Yasmira Rivera": 25000.00,
-        "Renato Miguel Gonzales": 35000.00, "Edwin Geovani Samayoa": 35000.00, "Cindy Julissa Guevara": 20000.00,
-        "Manuel Alejandro Reyes": 30000.00, "Kevin Wilfredo Villela": 35000.00, "Saul Edgardo Herrera": 35000.00,
-        "Luis Gerardo de Jesus": 30000.00
+        "Cindy Artola": 5000.00, "Mario Doblado": 5000.00, "Maria Josee Coto": 11000.00, "Christopher Midence": 17000.00, "Carlos Humberto Mejia": 35000.00, "Eduardo Lopez Lopez": 15000.00, "Luis Fernando Ponce": 33000.00, "Olga Elizabeth Osorto": 35000.00, "Eduardo Rene Mejia Rodriguez": 35000.00, "Steven Garcia": 33000.00, "Marco Smith": 33000.00, "Yeni Yamilet Castellanos": 25000.00, "Jose Samuel Lopez": 30000.00, "Linda de Jesus Notasco": 35000.00, "Oscar Ivan Sierra Linares": 24000.00, "Mario Jose Urquia": 35000.00, "Joan Jorge Pineda": 35000.00, "Rafael Alberto Perez": 10000.00, "Martha Julissa Perla (Caja Chica)": 10000.00, "Martha Julissa Perla (Gastos Mercadeo)": 10000.00, "Nolvin Roel Rivera": 15000.00, "Carlos Enrique Jallu": 10000.00, "Beverly Yasmira Rivera": 25000.00, "Renato Miguel Gonzales": 35000.00, "Edwin Geovani Samayoa": 35000.00, "Cindy Julissa Guevara": 20000.00, "Manuel Alejandro Reyes": 30000.00, "Kevin Wilfredo Villela": 35000.00, "Saul Edgardo Herrera": 35000.00, "Luis Gerardo de Jesus": 30000.00
     }
-    
-    contador = 0
     for nombre, monto in datos_2026.items():
         db.guardar_limite("empleado", nombre, monto)
-        contador += 1
-        
-    html_respuesta = f"""
-    <div style="font-family: 'Segoe UI', Arial; text-align: center; margin-top: 50px;">
-        <h2 style="color: #008f39;">¡Éxito! Se asignaron {contador} presupuestos.</h2>
-        <p>Los montos del Fondo Rotativo 2026 ya están guardados en la base de datos de Supabase.</p>
-        <br>
-        <a href="/panel/presupuestos" style="background: #008f39; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Ir a revisar Presupuestos</a>
-    </div>
-    """
-    return HTMLResponse(html_respuesta)
+    return HTMLResponse(f"<script>alert('Se cargaron {len(datos_2026)} presupuestos'); window.location.href='/panel/presupuestos';</script>")
 
 @app.get("/salud")
 def salud():
