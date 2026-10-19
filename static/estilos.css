@@ -54,3 +54,130 @@ tr:nth-child(even) td{background:#f7f9fc}
 @keyframes gir{to{transform:rotate(360deg)}}
 .small{font-size:12px;color:#7a8699}
 .flex{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+/* =========================================
+   ESTILOS MODERNOS PARA EL LOGIN (CENOSA VERDE)
+   ========================================= */
+
+/* Definimos el verde corporativo */
+:root {
+    --cenosa-verde: #008f39; 
+    --cenosa-verde-hover: #00732e;
+    --fondo-gris: #f4f7f6;
+}
+
+.login-body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--fondo-gris);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Barra superior */
+.login-header {
+    background-color: var(--cenosa-verde);
+    padding: 15px 30px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.header-content h1 {
+    color: white;
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+/* Contenedor principal para centrar la tarjeta */
+.login-main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* Tarjeta blanca del login */
+.login-card {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 400px;
+    border-top: 6px solid var(--cenosa-verde); /* Detalle verde arriba */
+}
+
+.login-card h2 {
+    color: var(--cenosa-verde);
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 30px;
+    font-size: 1.6rem;
+}
+
+/* Campos de texto */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #333;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 1rem;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--cenosa-verde);
+    box-shadow: 0 0 0 3px rgba(0, 143, 57, 0.15);
+}
+
+/* Botón de entrar */
+.btn-entrar {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--cenosa-verde);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 10px;
+}
+
+.btn-entrar:hover {
+    background-color: var(--cenosa-verde-hover);
+}
+
+/* Enlace inferior */
+.login-links {
+    text-align: center;
+    margin-top: 25px;
+}
+
+.login-links a {
+    color: var(--cenosa-verde);
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.login-links a:hover {
+    text-decoration: underline;
+}
