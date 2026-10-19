@@ -155,6 +155,7 @@
             if (!input.files || input.files.length === 0) return;
             const file = input.files[0];
             const status = document.getElementById(statusId);
+            const inputField = document.getElementById(targetInputId);
             
             status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Leyendo...';
             status.style.color = '#d97706';
@@ -167,14 +168,16 @@
                 const data = await res.json();
                 
                 if (data.valor) {
-                    document.getElementById(targetInputId).value = data.valor;
+                    inputField.value = data.valor;
                     status.innerHTML = `✅ Leído: ${data.valor}`;
                     status.style.color = '#16a34a';
                 } else {
+                    inputField.value = ''; // Limpiamos la casilla si falla
                     status.innerHTML = '⚠️ Ingrésalo manual';
                     status.style.color = '#dc2626';
                 }
             } catch (e) {
+                inputField.value = '';
                 status.innerHTML = '⚠️ Error';
                 status.style.color = '#dc2626';
             }
