@@ -19,6 +19,19 @@ from core.config import (BASE_DIR, FACTURAS_DIR, REPORTES_DIR, ZONAS,
 CATEGORIAS = ["Alimentacion", "Hotel", "Asistencia Tecnica", "Representacion",
               "Mercadeo", "Combustible", "Depreciacion", "Otros Gastos"]
 
+# LISTA OFICIAL DE CENTROS DE COSTO (Edita esto a tu gusto)
+CENTROS_COSTOS = [
+    "Ventas V60140",
+    "Administración",
+    "Planta / Producción",
+    "Logística / Bodega",
+    "Recursos Humanos",
+    "Contabilidad / Finanzas",
+    "Gerencia General",
+    "Mercadeo",
+    "Sistemas / TI"
+]
+
 ORDEN_PUESTOS = ["Gerente General", "Jefe", "Ingeniero Senior",
                  "Ingeniero Junior", "Ejecutivo de Ventas Senior",
                  "Ejecutivo de Ventas"]
@@ -52,7 +65,7 @@ def portal(request: Request, token: str = ""):
     if PORTAL_TOKEN and token != PORTAL_TOKEN:
         return HTMLResponse("<h3>Enlace invalido. Solicite el enlace correcto.</h3>", status_code=403)
     return templates.TemplateResponse(request, "portal.html", {
-        "categorias": CATEGORIAS, "zonas": ZONAS,
+        "categorias": CATEGORIAS, "zonas": ZONAS, "centros_costos": CENTROS_COSTOS,
         "empresa": NOMBRE_EMPRESA_DEFAULT, "token": token,
         "empleados": [e["nombre"] for e in db.listar_empleados()],
     })
@@ -63,31 +76,25 @@ async def api_validar(
     departamento: str = Form(""), zona: str = Form("tierra_firme"),
     categoria: str = Form("Alimentacion"), negocio: str = Form(""), num_factura: str = Form(""),
 ):
-    # 1. Guardar el archivo físico
     ext = Path(archivo.filename or "factura").suffix.lower() or ".png"
     nombre = f"{secrets.token_hex(6)}{ext}"
     destino = Path(FACTURAS_DIR) / nombre
     with open(destino, "wb") as f:
         shutil.copyfileobj(archivo.file, f)
 
-    # 2. AUTOMATIZACIÓN: Ejecutar el OCR para leer la factura
     datos = {"rtn": "", "cai": "", "fecha_compra": "", "monto": 0.0, "texto_ocr": ""}
     try:
         leido = ocr.analizar(str(destino))
         for k in ("rtn", "cai", "fecha_compra", "monto"):
-            if leido.get(k): 
-                datos[k] = leido.get(k)
+            if leido.get(k): datos[k] = leido.get(k)
         datos["texto_ocr"] = leido.get("texto_ocr", "")
-        if not datos.get("fecha_limite"): 
-            datos["fecha_limite"] = leido.get("fecha_limite")
+        if not datos.get("fecha_limite"): datos["fecha_limite"] = leido.get("fecha_limite")
     except Exception as e:
         datos["texto_ocr"] = f"[OCR no disponible: {e}]"
 
-    # 3. Validar con las reglas de negocio (límites de presupuesto, RTN, etc.)
     datos.update({"empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria})
     veredicto = validacion.validar(datos, datos.get("texto_ocr", ""))
 
-    # 4. Guardar en la base de datos automáticamente
     db.asegurar_empleado(empleado, departamento)
     reg = db.crear_solicitud({
         "empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria,
@@ -99,13 +106,9 @@ async def api_validar(
         "texto_ocr": datos.get("texto_ocr", ""),
     })
 
-    # 5. Devolver el resultado al usuario en la pantalla
     return JSONResponse({
-        "estado": veredicto["estado"],
-        "cumple": veredicto["cumple"],
-        "motivos": veredicto["motivos"],
-        "monto_extraido": veredicto["monto"],
-        "folio": reg["folio"]
+        "estado": veredicto["estado"], "cumple": veredicto["cumple"], "motivos": veredicto["motivos"],
+        "monto_extraido": veredicto["monto"], "folio": reg["folio"]
     })
 
 @app.get("/depreciacion", response_class=HTMLResponse)
@@ -115,6 +118,7 @@ def depreciacion_portal(request: Request, token: str = ""):
     p = depreciacion.obtener_parametros()
     return templates.TemplateResponse(request, "depreciacion.html", {
         "zonas": ZONAS, "empresa": NOMBRE_EMPRESA_DEFAULT, "token": token,
+        "centros_costos": CENTROS_COSTOS,
         "empleados": [e["nombre"] for e in db.listar_empleados()],
         "factor": p["factor_lps_km"], "milla_km": depreciacion.MILLA_A_KM,
     })
@@ -163,7 +167,6 @@ def login(request: Request, usuario: str = Form(...), password: str = Form(...))
         request.session["admin"] = usuario
         request.session["rol"] = "admin"
         return RedirectResponse("/panel", status_code=303)
-    
     empleados = [e["nombre"].lower() for e in db.listar_empleados()]
     if usuario.lower() in empleados:
         request.session["admin"] = usuario
@@ -274,7 +277,8 @@ def empleados_form(request: Request, msg: str = ""):
 
     return templates.TemplateResponse(request, "empleados.html", {
         "empleados": empleados_ordenados(), "orden_puestos": ORDEN_PUESTOS, "limites": dict_limites,
-        "zonas": ZONAS, "cfg": cfg, "dep": dep, "msg": msg, "rol": "admin", "usuario": request.session.get("admin")
+        "zonas": ZONAS, "cfg": cfg, "dep": dep, "msg": msg, "rol": "admin", "usuario": request.session.get("admin"),
+        "centros_costos": CENTROS_COSTOS # <-- Se lo pasamos a la vista
     })
 
 @app.post("/panel/empleados/agregar")
