@@ -22,7 +22,7 @@
                 <p class="menu-label">Principal</p>
                 <a href="/panel" class="active"><i class="fas fa-home"></i> Inicio</a>
                 
-                <!-- Pestaña de Facturas / Solicitud de Reembolso -->
+                <!-- ENLACE CORREGIDO A FACTURAS -->
                 {% if rol == 'admin' %}
                 <a href="/panel/facturas"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
                 {% else %}
@@ -95,7 +95,7 @@
                         <div class="kpi-icon" style="background: rgba(255,255,255,0.2); color: white;"><i class="fas fa-wallet"></i></div>
                         <div class="kpi-data">
                             <h3 style="color: rgba(255,255,255,0.8);">Total Reembolsado</h3>
-                            <div class="kpi-number" style="color: white;">$0.00</div>
+                            <div class="kpi-number" style="color: white;">L 0.00</div>
                         </div>
                     </div>
                 </div>
@@ -103,7 +103,7 @@
                 <!-- GRÁFICOS -->
                 <div class="charts-grid">
                     <div class="chart-card">
-                        <div class="chart-header"><h3>Gastos por Mes</h3></div>
+                        <div class="chart-header"><h3>Gastos por Mes (Lempiras)</h3></div>
                         <div class="chart-wrapper">
                             <canvas id="graficoBarras"></canvas>
                         </div>
@@ -128,7 +128,7 @@
                         <div class="kpi-icon green"><i class="fas fa-money-bill-wave"></i></div>
                         <div class="kpi-data">
                             <h3>Mi Presupuesto Asignado 2026</h3>
-                            <div class="kpi-number" style="color: var(--verde-cenosa);">${{ "{:,.2f}".format(presupuesto) }}</div>
+                            <div class="kpi-number" style="color: var(--verde-cenosa);">L {{ "{:,.2f}".format(presupuesto) }}</div>
                             <span class="role">Fondo Rotativo</span>
                         </div>
                     </div>
@@ -181,7 +181,7 @@
                                         </div>
                                     </td>
                                     <td>{{ factura.fecha_compra or 'Reciente' }}</td>
-                                    <td class="amount">${{ factura.monto }}</td>
+                                    <td class="amount">L {{ factura.monto }}</td>
                                     <td><span class="pill {{ factura.estado }}">{{ factura.estado }}</span></td>
                                     <td>
                                         {% if rol == 'admin' %}
@@ -209,18 +209,18 @@
 
     {% if rol == 'admin' %}
     <script>
-        // Gráfico de Barras (Con datos dinámicos desde Python)
+        // Gráfico de Barras (Lempiras y sin decimales en el eje Y)
         const ctxBarras = document.getElementById('graficoBarras').getContext('2d');
         new Chart(ctxBarras, {
             type: 'bar',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
                 datasets: [{ 
-                    label: 'Gastos ($)', 
-                    data: {{ chart_data | safe }}, // <--- CONECTADO A LA BASE DE DATOS
+                    label: 'Gastos (L)', 
+                    data: {{ chart_data | safe }}, 
                     backgroundColor: '#008f39', 
                     borderRadius: 6, 
-                    barThickness: 20 
+                    barThickness: 25 
                 }]
             },
             options: { 
@@ -228,13 +228,23 @@
                 maintainAspectRatio: false, 
                 plugins: { legend: { display: false } }, 
                 scales: { 
-                    y: { beginAtZero: true, grid: { borderDash: [5, 5], color: '#e2e8f0' } }, 
+                    y: { 
+                        beginAtZero: true, 
+                        suggestedMax: 5000, // Le da un tope inicial de 5000 para que no se vea vacío
+                        ticks: {
+                            precision: 0, // Evita los decimales (0.1, 0.2)
+                            callback: function(value) {
+                                return 'L ' + value; // Agrega el símbolo de Lempira
+                            }
+                        },
+                        grid: { borderDash: [5, 5], color: '#e2e8f0' } 
+                    }, 
                     x: { grid: { display: false } } 
                 } 
             }
         });
 
-        // Gráfico de Dona (Con datos dinámicos desde Python)
+        // Gráfico de Dona
         const ctxDona = document.getElementById('graficoDona').getContext('2d');
         new Chart(ctxDona, {
             type: 'doughnut',
