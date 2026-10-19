@@ -11,7 +11,6 @@
 <body class="dashboard-body">
 
     <div class="dashboard-container">
-        <!-- SIDEBAR BLANCO -->
         <aside class="sidebar">
             <div class="sidebar-brand">
                 <img src="/static/logo_color.png" alt="Logo" style="height: 45px;">
@@ -22,7 +21,6 @@
                 <p class="menu-label">Principal</p>
                 <a href="/panel" class="active"><i class="fas fa-home"></i> Inicio</a>
                 
-                <!-- ENLACE CORREGIDO A FACTURAS -->
                 {% if rol == 'admin' %}
                 <a href="/panel/facturas"><i class="fas fa-file-invoice-dollar"></i> Todas las Facturas</a>
                 {% else %}
@@ -42,15 +40,13 @@
             </div>
         </aside>
 
-        <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
             <header class="top-navbar">
                 <div class="search-bar">
                     <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Buscar factura, empleado...">
+                    <input type="text" placeholder="Buscar...">
                 </div>
                 <div class="user-info">
-                    <div class="notification"><i class="fas fa-bell"></i></div>
                     <div class="user-profile">
                         <div class="text">
                             <span class="name">{{ usuario }}</span>
@@ -63,12 +59,12 @@
 
             <div class="content-wrapper">
                 {% if rol == 'admin' %}
+                <!-- DASHBOARD ADMINISTRADOR (Se mantiene igual) -->
                 <div class="dashboard-header">
                     <h2>Overview de Viáticos</h2>
                     <p>Aquí tienes el resumen de la actividad del sistema.</p>
                 </div>
 
-                <!-- TARJETAS KPI -->
                 <div class="dashboard-grid">
                     <div class="kpi-card">
                         <div class="kpi-icon green"><i class="fas fa-check-double"></i></div>
@@ -100,7 +96,6 @@
                     </div>
                 </div>
 
-                <!-- GRÁFICOS -->
                 <div class="charts-grid">
                     <div class="chart-card">
                         <div class="chart-header"><h3>Gastos por Mes (Lempiras)</h3></div>
@@ -117,45 +112,46 @@
                 </div>
 
                 {% else %}
-                <!-- VISTA PARA EMPLEADOS -->
+                <!-- VISTA EMPLEADO: TRES OPCIONES CLARAS -->
                 <div class="dashboard-header">
                     <h2>Hola, {{ usuario }}</h2>
-                    <p>Bienvenido a tu portal de viáticos.</p>
+                    <p>¿Qué gasto necesitas registrar hoy?</p>
                 </div>
                 
-                <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="dashboard-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <!-- Opción 1: Presupuesto -->
                     <div class="kpi-card" style="border-left: 6px solid var(--verde-cenosa);">
                         <div class="kpi-icon green"><i class="fas fa-money-bill-wave"></i></div>
                         <div class="kpi-data">
-                            <h3>Mi Presupuesto Asignado 2026</h3>
+                            <h3>Mi Presupuesto 2026</h3>
                             <div class="kpi-number" style="color: var(--verde-cenosa);">L {{ "{:,.2f}".format(presupuesto) }}</div>
-                            <span class="role">Fondo Rotativo</span>
                         </div>
                     </div>
-                    
-                    <div class="kpi-card" style="background: var(--verde-fondo); border: none;">
+
+                    <!-- Opción 2: Subir Factura Normal o Gasolina -->
+                    <div class="kpi-card" style="background: var(--verde-fondo); border: none; cursor: pointer;" onclick="window.location.href='/?token={{ token }}'">
                         <div class="kpi-icon green"><i class="fas fa-file-upload"></i></div>
                         <div class="kpi-data">
-                            <h3 style="color: var(--verde-cenosa);">¿Nueva factura?</h3>
-                            <p style="margin: 5px 0 10px; color: var(--text-main); font-size: 0.85rem;">Sube tu comprobante para revisión.</p>
-                            <a href="/?token={{ token }}" class="btn-action" style="background: var(--verde-cenosa); color: white;">
-                                Subir Factura
-                            </a>
+                            <h3 style="color: var(--verde-cenosa);">Subir Factura / Gasolina</h3>
+                            <p style="margin: 5px 0 0; color: var(--text-main); font-size: 0.85rem;">Adjunta tu recibo y el sistema lo procesará.</p>
+                        </div>
+                    </div>
+
+                    <!-- Opción 3: Depreciación de Vehículo -->
+                    <div class="kpi-card" style="background: #f0fdf4; border: 1px solid #bbf7d0; cursor: pointer;" onclick="window.location.href='/depreciacion?token={{ token }}'">
+                        <div class="kpi-icon" style="background: #dcfce7; color: #16a34a;"><i class="fas fa-car"></i></div>
+                        <div class="kpi-data">
+                            <h3 style="color: #166534;">Depreciación de Vehículo</h3>
+                            <p style="margin: 5px 0 0; color: var(--text-main); font-size: 0.85rem;">Registra los km recorridos de tu ruta.</p>
                         </div>
                     </div>
                 </div>
                 {% endif %}
 
-                <!-- TABLA DE FACTURAS -->
-                <div class="table-card">
+                <!-- TABLA DE FACTURAS RECIENTES (Para ambos) -->
+                <div class="table-card" style="margin-top: 20px;">
                     <div class="table-header">
-                        <h3>{% if rol == 'admin' %}Últimas Solicitudes{% else %}Mis Solicitudes{% endif %}</h3>
-                        <div class="tabs modern-tabs">
-                            <a href="/panel?tab=cumplen" class="{% if tab == 'cumplen' %}act{% endif %}">Cumplen ({{ conteos.cumplen }})</a>
-                            <a href="/panel?tab=nocumplen" class="{% if tab == 'nocumplen' %}act{% endif %}">No cumplen ({{ conteos.nocumplen }})</a>
-                            <a href="/panel?tab=pendientes" class="{% if tab == 'pendientes' %}act{% endif %}">Pendientes ({{ conteos.pendientes }})</a>
-                            <a href="/panel?tab=historial" class="{% if tab == 'historial' %}act{% endif %}">Historial ({{ conteos.historial }})</a>
-                        </div>
+                        <h3>{% if rol == 'admin' %}Últimas Solicitudes{% else %}Mis Solicitudes Recientes{% endif %}</h3>
                     </div>
 
                     <div class="table-responsive">
@@ -166,13 +162,11 @@
                                     <th>Fecha</th>
                                     <th>Monto</th>
                                     <th>Estatus</th>
-                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% set lista_actual = cumplen if tab == 'cumplen' else (nocumplen if tab == 'nocumplen' else (pendientes if tab == 'pendientes' else historial)) %}
-                                
-                                {% for factura in lista_actual %}
+                                {% for factura in lista_actual[:5] %}
                                 <tr>
                                     <td>
                                         <div class="user-cell">
@@ -183,19 +177,12 @@
                                     <td>{{ factura.fecha_compra or 'Reciente' }}</td>
                                     <td class="amount">L {{ factura.monto }}</td>
                                     <td><span class="pill {{ factura.estado }}">{{ factura.estado }}</span></td>
-                                    <td>
-                                        {% if rol == 'admin' %}
-                                        <a href="/panel/factura/{{ factura.id }}" target="_blank" class="btn-action"><i class="fas fa-eye"></i> Ver</a>
-                                        {% else %}
-                                        <span class="role">En revisión</span>
-                                        {% endif %}
-                                    </td>
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="5" class="empty-state">
+                                    <td colspan="4" class="empty-state">
                                         <i class="fas fa-inbox"></i>
-                                        <p>No hay registros en esta pestaña.</p>
+                                        <p>No hay registros recientes.</p>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -209,62 +196,24 @@
 
     {% if rol == 'admin' %}
     <script>
-        // Gráfico de Barras (Lempiras y sin decimales en el eje Y)
         const ctxBarras = document.getElementById('graficoBarras').getContext('2d');
         new Chart(ctxBarras, {
             type: 'bar',
             data: {
                 labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun'],
-                datasets: [{ 
-                    label: 'Gastos (L)', 
-                    data: {{ chart_data | safe }}, 
-                    backgroundColor: '#008f39', 
-                    borderRadius: 6, 
-                    barThickness: 25 
-                }]
+                datasets: [{ label: 'Gastos (L)', data: {{ chart_data | safe }}, backgroundColor: '#008f39', borderRadius: 6, barThickness: 25 }]
             },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { legend: { display: false } }, 
-                scales: { 
-                    y: { 
-                        beginAtZero: true, 
-                        suggestedMax: 5000, // Le da un tope inicial de 5000 para que no se vea vacío
-                        ticks: {
-                            precision: 0, // Evita los decimales (0.1, 0.2)
-                            callback: function(value) {
-                                return 'L ' + value; // Agrega el símbolo de Lempira
-                            }
-                        },
-                        grid: { borderDash: [5, 5], color: '#e2e8f0' } 
-                    }, 
-                    x: { grid: { display: false } } 
-                } 
-            }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, suggestedMax: 5000, ticks: { precision: 0, callback: function(value) { return 'L ' + value; } }, grid: { borderDash: [5, 5], color: '#e2e8f0' } }, x: { grid: { display: false } } } }
         });
 
-        // Gráfico de Dona
         const ctxDona = document.getElementById('graficoDona').getContext('2d');
         new Chart(ctxDona, {
             type: 'doughnut',
             data: {
                 labels: ['Aprobadas', 'Pendientes', 'Rechazadas'],
-                datasets: [{ 
-                    data: [{{ conteos.cumplen|default(0) }}, {{ conteos.revisar|default(0) }}, {{ conteos.nocumplen|default(0) }}], 
-                    backgroundColor: ['#008f39', '#f59e0b', '#ef4444'], 
-                    borderWidth: 0, 
-                    hoverOffset: 4 
-                }]
+                datasets: [{ data: [{{ conteos.cumplen|default(0) }}, {{ conteos.revisar|default(0) }}, {{ conteos.nocumplen|default(0) }}], backgroundColor: ['#008f39', '#f59e0b', '#ef4444'], borderWidth: 0, hoverOffset: 4 }]
             },
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                cutout: '75%', 
-                plugins: { 
-                    legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } } 
-                } 
-            }
+            options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, font: { size: 11 } } } } }
         });
     </script>
     {% endif %}
