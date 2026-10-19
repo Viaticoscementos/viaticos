@@ -517,3 +517,11 @@ tr:last-child td {
     .dashboard-grid { grid-template-columns: 1fr; }
     .chart-card { grid-column: span 1; }
 }
+/* =========================================
+   CONTENEDOR PARA LOS GRÁFICOS (EVITA QUE SE ROMPA LA PANTALLA)
+   ========================================= */
+.chart-wrapper {
+    position: relative;
+    height: 300px; /* Altura fija en píxeles */
+    width: 100%;
+}
