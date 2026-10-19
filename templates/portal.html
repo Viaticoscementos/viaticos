@@ -48,7 +48,7 @@
                         <select name="empleado" id="select-empleado" required style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px;">
                             <option value="">Selecciona tu nombre...</option>
                             {% for e in empleados %}
-                            <option value="{{ e.nombre }}">{{ e.nombre }} ({{ e.puesto }})</option>
+                            <option value="{{ e.nombre }}">{{ e.nombre }} {% if e.puesto %} ({{ e.puesto }}){% endif %}</option>
                             {% endfor %}
                         </select>
                     </div>
