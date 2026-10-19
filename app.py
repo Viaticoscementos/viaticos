@@ -83,12 +83,13 @@ def portal(request: Request, token: str = ""):
         "orden_puestos": ORDEN_PUESTOS
     })
 
-# --- RUTA API VALIDAR (CON SOPORTE PARA ODÓMETRO) ---
+# --- RUTA API VALIDAR (CON SOPORTE PARA KM INICIAL Y FINAL) ---
 @app.post("/api/validar")
 async def api_validar(
     request: Request, 
     archivos: List[UploadFile] = File(...), 
-    odometro: UploadFile = File(None), # <--- AQUI RECIBIMOS LA FOTO DEL ODÓMETRO
+    km_inicial: str = Form(""), 
+    km_final: str = Form(""),
     empleado: str = Form(...),
     departamento: str = Form(""), 
     zona: str = Form("tierra_firme"),
@@ -98,7 +99,7 @@ async def api_validar(
 ):
     nombres_guardados = []
     primer_archivo_path = None
-    info_odometro = ""
+    info_km = ""
 
     # 1. Guardar archivos de factura
     for archivo in archivos:
@@ -112,25 +113,20 @@ async def api_validar(
         if not primer_archivo_path:
             primer_archivo_path = str(destino)
 
-    # 2. Si hay odómetro, procesarlo
-    if odometro and odometro.filename:
-        ext_odo = Path(odometro.filename).suffix.lower() or ".png"
-        nombre_odo = f"odo_{secrets.token_hex(6)}{ext_odo}"
-        destino_odo = Path(FACTURAS_DIR) / nombre_odo
-        with open(destino_odo, "wb") as f:
-            shutil.copyfileobj(odometro.file, f)
-        
-        nombres_guardados.append(nombre_odo) # Lo agregamos para que se vea en el admin
-        
+    # 2. Procesar kilometraje si es combustible
+    if categoria == 'Combustible':
         try:
-            # Leer el odómetro con OCR
-            res_odo = ocr.leer_odometro(str(destino_odo))
-            if res_odo.get("valor"):
-                info_odometro = f" [KM: {res_odo['valor']}]"
-        except Exception as e:
-            print(f"Error leyendo odometro: {e}")
+            ki = float(km_inicial) if km_inicial else 0.0
+            kf = float(km_final) if km_final else 0.0
+            if kf > ki:
+                distancia = kf - ki
+                info_km = f" [Km Inicial: {ki:.0f} | Km Final: {kf:.0f} | Recorrido: {distancia:.0f} km]"
+            else:
+                info_km = f" [Error en lecturas: Inicial {ki}, Final {kf}]"
+        except ValueError:
+            info_km = " [Error al leer los kilometrajes]"
 
-    # 3. Hacemos el OCR sobre la factura (el primer archivo)
+    # 3. Hacemos el OCR sobre la factura
     datos = {"rtn": "", "cai": "", "fecha_compra": "", "monto": 0.0, "texto_ocr": ""}
     if primer_archivo_path:
         try:
@@ -157,10 +153,10 @@ async def api_validar(
     db.asegurar_empleado(empleado, departamento)
     archivos_str = ",".join(nombres_guardados)
     
-    # Agregamos el KM a los motivos para que el admin lo vea en la tabla
-    motivos_finales = veredicto["motivos"] + info_odometro
-    if info_odometro and veredicto["cumple"]:
-        motivos_finales = f"Factura válida.{info_odometro}"
+    # Agregamos el KM a los motivos
+    motivos_finales = veredicto["motivos"] + info_km
+    if info_km and veredicto["cumple"]:
+        motivos_finales = f"Factura válida.{info_km}"
 
     reg = db.crear_solicitud({
         "empleado": empleado, "departamento": departamento, "zona": zona, "categoria": categoria,
@@ -283,7 +279,6 @@ def ver_factura(request: Request, sid: int):
     s = db.obtener_solicitud(sid)
     if not s or not s.get("archivo"): raise HTTPException(404)
     
-    # Si hay múltiples archivos, abrimos el primero
     primer_archivo = s["archivo"].split(",")[0]
     ruta = Path(FACTURAS_DIR) / primer_archivo
     if not ruta.exists(): raise HTTPException(404)
